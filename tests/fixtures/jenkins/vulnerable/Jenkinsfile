@@ -1,0 +1,26 @@
+@Library('shared-pipeline@main') _
+pipeline {
+    agent { label 'linux-build' }
+    environment {
+        DEPLOY_ENV = 'staging'
+    }
+    triggers {
+        pollSCM('H/5 * * * *')
+    }
+    stages {
+        stage('Build') {
+            steps {
+                sh "echo Building branch ${env.BRANCH_NAME}"
+                sh "echo PR title: ${env.CHANGE_TITLE}"
+                sh "echo User input: ${params.DEPLOY_TARGET}"
+            }
+        }
+        stage('Deploy') {
+            steps {
+                withCredentials([string(credentialsId: 'deploy-token', variable: 'TOKEN')]) {
+                    sh "deploy --token $TOKEN --target ${params.DEPLOY_TARGET}"
+                }
+            }
+        }
+    }
+}

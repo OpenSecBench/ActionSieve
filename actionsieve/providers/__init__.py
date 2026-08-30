@@ -39,8 +39,9 @@ def _get_providers() -> list[Provider]:
     from actionsieve.providers.azure import AzureProvider
     from actionsieve.providers.github import GitHubProvider
     from actionsieve.providers.gitlab import GitLabProvider
+    from actionsieve.providers.jenkins import JenkinsProvider
 
-    return [GitHubProvider(), GitLabProvider(), AzureProvider()]
+    return [GitHubProvider(), GitLabProvider(), AzureProvider(), JenkinsProvider()]
 
 
 def auto_detect(repo_path: Path) -> list[Provider]:
