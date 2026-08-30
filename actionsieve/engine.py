@@ -6,7 +6,8 @@ import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from actionsieve.matchers import match_cross_step, match_structural
+from actionsieve.cross_step import match_cross_step
+from actionsieve.matchers import match_structural
 
 if TYPE_CHECKING:
     from actionsieve.model import Job, Step, WorkflowModel
