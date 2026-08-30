@@ -186,6 +186,23 @@ This tool scans for CI/CD vulnerabilities — it must not introduce any.
 - Reference CI workflows use `pull_request` (not `pull_request_target`),
   load patterns from base branch, pin all action refs to SHA.
 
+## Definition of done (per commit)
+
+Every commit must pass this checklist. Don't build fast and audit later —
+enforce quality at each commit.
+
+- [ ] **Tests exist** — every new function has at least one test, every
+  new pattern has vulnerable + safe fixtures
+- [ ] **Types are strict** — no `Any` where a concrete type works, no
+  `object` + `assert isinstance` workarounds, use `TYPE_CHECKING` imports
+- [ ] **Line counts** — no module over 400 lines (split before committing,
+  not after)
+- [ ] **No dead code** — no unused imports, variables, functions, or
+  constants
+- [ ] **E2E coverage** — every CLI flag/command has at least one E2E test
+- [ ] **Patterns fire** — if you add a pattern, run it against a fixture
+  and verify it produces findings before committing
+
 ## Git workflow
 
 - `main` is the default branch
@@ -226,5 +243,6 @@ htmlcov/
 
 ## Current phase
 
-Phase 1: GitHub Actions scanner (MVP). See `docs/architecture.md` for
-the full 6-phase implementation plan and `TODO.md` for the task breakdown.
+Phases 1–3 complete (GitHub Actions scanner, component inventory, chain
+detection). See `docs/architecture.md` for the full 6-phase implementation
+plan and `TODO.md` for the task breakdown.
