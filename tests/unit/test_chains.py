@@ -67,6 +67,54 @@ class TestForkScriptOutputInjection:
         assert len(chain_findings) == 0
 
 
+class TestCrossJobChainAnalysis:
+    def test_detects_cross_job_matrix_flow(self) -> None:
+        model = _parse("vulnerable/.github/workflows/fs-to-matrix.yml")
+        analysis = analyze(model)
+        matrix_flows = [f for f in analysis.flows if f.flow_type == "matrix_fromjson"]
+        assert len(matrix_flows) >= 1
+
+    def test_cross_job_flow_is_tainted(self) -> None:
+        model = _parse("vulnerable/.github/workflows/fs-to-matrix.yml")
+        analysis = analyze(model)
+        tainted = [f for f in analysis.flows if f.is_tainted and f.source_job != f.sink_job]
+        assert len(tainted) >= 1
+
+    def test_cross_job_flow_sink_in_shell(self) -> None:
+        model = _parse("vulnerable/.github/workflows/fs-to-matrix.yml")
+        analysis = analyze(model)
+        shell_flows = [
+            f
+            for f in analysis.flows
+            if f.is_tainted and f.sink_in_shell and f.source_job != f.sink_job
+        ]
+        assert len(shell_flows) >= 1
+
+    def test_cross_job_taint_reasons(self) -> None:
+        model = _parse("vulnerable/.github/workflows/fs-to-matrix.yml")
+        analysis = analyze(model)
+        tainted = [f for f in analysis.flows if f.is_tainted and f.source_job != f.sink_job]
+        assert any("cross-job" in r for r in tainted[0].taint_reasons)
+
+
+class TestFsToMatrixInjection:
+    def test_detects_fs_to_matrix(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/fs-to-matrix.yml")
+        chain_findings = [f for f in findings if f.pattern_id == "fs-to-matrix-injection"]
+        assert len(chain_findings) >= 1
+
+    def test_has_evidence(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/fs-to-matrix.yml")
+        chain_findings = [f for f in findings if f.pattern_id == "fs-to-matrix-injection"]
+        assert len(chain_findings[0].evidence) >= 3
+
+    def test_flow_type_in_evidence(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/fs-to-matrix.yml")
+        chain_findings = [f for f in findings if f.pattern_id == "fs-to-matrix-injection"]
+        evidence = " ".join(chain_findings[0].evidence)
+        assert "matrix_fromjson" in evidence
+
+
 class TestNoFalsePositivesOnSafeChains:
     def test_script_output_env(self) -> None:
         findings = _scan("safe/.github/workflows/script-output-env.yml")

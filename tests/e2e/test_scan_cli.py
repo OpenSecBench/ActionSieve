@@ -132,6 +132,42 @@ class TestScanFindings:
         assert len(results_with_cwe) > 0
 
 
+class TestChainDetectionFindings:
+    def test_fork_script_output_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "fork-script-output-injection" in ids
+
+    def test_fs_to_matrix_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "fs-to-matrix-injection" in ids
+
+    def test_safe_chain_not_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "safe")],
+        )
+        data = json.loads(result.output)
+        chain_findings = [
+            f
+            for f in data["findings"]
+            if f["pattern_id"] in ("fork-script-output-injection", "fs-to-matrix-injection")
+        ]
+        assert len(chain_findings) == 0
+
+
 class TestVersionFlag:
     def test_version(self) -> None:
         runner = CliRunner()
