@@ -41,3 +41,38 @@ patterns:
     references:
       - https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
     status: documented
+
+  - id: issue-comment-fork-checkout
+    title: issue_comment trigger with fork code checkout and elevated permissions
+    description: |
+      A workflow triggered by issue_comment checks out PR/fork code and
+      has elevated permissions. Any GitHub user can post a comment on any
+      public repo's PR. If the workflow gates only on comment text, an
+      attacker can trigger privileged operations on fork-controlled code.
+      GITHUB_REF for issue_comment is always the default branch, so
+      provenance attestations look legitimate even when running fork code.
+    platforms: [github]
+    trigger: [issue_comment]
+    trust_boundary: unauthenticated_comment -> fork_code_execution -> privileged_operations
+    attacker_model: fork_pr
+    impact: [rce, secret_exfil, supply_chain]
+    severity_base: high
+    requires_self_hosted: false
+    severity_notes: |
+      High because the comment trigger is unauthenticated — any GitHub
+      user can post on any public PR. Combined with fork checkout and
+      elevated permissions, this gives full RCE with secrets. The
+      GITHUB_REF default-branch aliasing makes provenance look clean.
+    detection:
+      type: structural
+    mitigations:
+      - Do not check out PR head code in issue_comment workflows
+      - Verify commenter authorization via github.event.comment.author_association
+      - Use separate unprivileged job for checkout, pass only safe outputs
+      - Require MEMBER or OWNER association, not just CONTRIBUTOR
+    cwe: CWE-829
+    tags: [trigger, issue-comment, checkout, chatops, provenance]
+    references:
+      - https://socket.dev/blog/openapi-react-query-codegen-npm-compromise
+      - https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+    status: active

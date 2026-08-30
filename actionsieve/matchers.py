@@ -33,6 +33,7 @@ def match_structural(
         "unpinned-container-image": _match_unpinned_image,
         "fork-pr-cache-write": _match_fork_cache_write,
         "docker-plugin-privileged": _match_docker_plugin_privileged,
+        "issue-comment-fork-checkout": _match_issue_comment_fork_checkout,
     }
 
     matcher = dispatch.get(pid)
@@ -417,4 +418,69 @@ def _match_docker_plugin_privileged(
                         line=step.action_ref.line,
                     )
                 )
+    return findings
+
+
+_FORK_CHECKOUT_MARKERS = (
+    "pull/",
+    "github.event.pull_request.head.sha",
+    "github.event.pull_request.head.ref",
+    "github.head_ref",
+)
+
+
+def _job_checks_out_fork(job: Job) -> list[str]:
+    evidence: list[str] = []
+    for step in job.steps:
+        cmd = step.shell_command or ""
+        if "pull/" in cmd and ("git fetch" in cmd or "git checkout" in cmd):
+            evidence.append(f"Shell fetches PR head: {cmd[:80]}")
+        if step.action_ref and "checkout" in step.action_ref.name:
+            ref_input = step.inputs.get("ref", "")
+            if any(m in ref_input for m in _FORK_CHECKOUT_MARKERS):
+                evidence.append(f"Checkout with PR head ref: {ref_input}")
+    return evidence
+
+
+def _job_has_elevated_permissions(model: WorkflowModel, job: Job) -> list[str]:
+    evidence: list[str] = []
+    perms = job.permissions or model.permissions
+    if perms:
+        for scope in ("id-token", "contents", "packages"):
+            if perms.raw.get(scope) == "write":
+                evidence.append(f"{scope}: write")
+    if job.secrets_referenced:
+        evidence.append(f"Secrets: {', '.join(job.secrets_referenced[:3])}")
+    return evidence
+
+
+def _match_issue_comment_fork_checkout(
+    model: WorkflowModel, pattern: dict[str, Any], make_finding: MakeFinding
+) -> list[Finding]:
+    has_issue_comment = any(t.raw_event == "issue_comment" for t in model.triggers)
+    if not has_issue_comment:
+        return []
+
+    findings: list[Finding] = []
+    for job in model.jobs:
+        checkout_ev = _job_checks_out_fork(job)
+        if not checkout_ev:
+            continue
+        perms_ev = _job_has_elevated_permissions(model, job)
+        if not perms_ev:
+            continue
+        findings.append(
+            make_finding(
+                pattern=pattern,
+                model=model,
+                job=job,
+                step=None,
+                evidence=[
+                    "issue_comment trigger with fork checkout + elevated permissions",
+                    *checkout_ev,
+                    *perms_ev,
+                ],
+                line=0,
+            )
+        )
     return findings

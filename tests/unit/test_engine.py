@@ -346,6 +346,20 @@ class TestDockerPluginPrivileged:
         assert any("socket" in e for f in plugin_findings for e in f.evidence)
 
 
+class TestIssueCommentForkCheckout:
+    def test_detects_issue_comment_with_fork_checkout(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/issue-comment-checkout.yml")
+        ic_findings = [f for f in findings if f.pattern_id == "issue-comment-fork-checkout"]
+        assert len(ic_findings) == 1
+        assert any("pull/" in e for e in ic_findings[0].evidence)
+        assert any("id-token: write" in e for e in ic_findings[0].evidence)
+
+    def test_safe_issue_comment_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/issue-comment-safe.yml")
+        ic_findings = [f for f in findings if f.pattern_id == "issue-comment-fork-checkout"]
+        assert len(ic_findings) == 0
+
+
 class TestNoFalsePositivesOnSafe:
     def test_env_indirection(self) -> None:
         findings = _scan("safe/.github/workflows/env-indirection.yml")

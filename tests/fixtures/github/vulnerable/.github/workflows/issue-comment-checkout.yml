@@ -1,0 +1,14 @@
+name: release
+permissions:
+  id-token: write
+on:
+  issue_comment:
+    types: [created]
+jobs:
+  publish:
+    if: github.event.issue.pull_request && github.event.comment.body == 'publish'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: git fetch origin pull/${{ github.event.issue.number }}/head:pr && git checkout pr
+      - run: npm publish

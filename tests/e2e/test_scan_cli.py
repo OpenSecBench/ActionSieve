@@ -348,6 +348,28 @@ class TestForkCacheWriteFindings:
         assert len(cache_findings) == 0
 
 
+class TestIssueCommentForkCheckout:
+    def test_issue_comment_fork_checkout_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "issue-comment-fork-checkout" in ids
+
+    def test_safe_issue_comment_not_flagged(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "safe")],
+        )
+        data = json.loads(result.output)
+        ic = [f for f in data["findings"] if f["pattern_id"] == "issue-comment-fork-checkout"]
+        assert len(ic) == 0
+
+
 class TestTrustRepoProfile:
     def _make_repo(self, tmp_path: Path) -> Path:
         wf_dir = tmp_path / ".github" / "workflows"
