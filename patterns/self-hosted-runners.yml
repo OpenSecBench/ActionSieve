@@ -1,0 +1,42 @@
+patterns:
+
+  - id: self-hosted-runner-persistence
+    title: Persistent access on self-hosted runners
+    description: |
+      If any injection pattern executes on a self-hosted runner, the
+      attacker can establish persistent access. Self-hosted runners are
+      not ephemeral — they persist between runs. The attacker can modify
+      the filesystem, install backdoors, intercept future runs, or access
+      network resources available to the runner.
+    platforms: "all"
+    trigger: [any]
+    trust_boundary: workflow_execution -> host_machine_persistence
+    attacker_model: fork_pr
+    impact: [rce, secret_exfil, supply_chain]
+    severity_base: high
+    requires_self_hosted: true
+    severity_notes: |
+      Transforms any RCE-on-runner from low (ephemeral) to critical
+      (persistent infrastructure access). Most open-source repos use
+      managed runners for fork PRs, but some use self-hosted for
+      performance (large builds, GPU tests). Check runs-on: for
+      self-hosted labels and runner group fork PR policies.
+    detection:
+      type: structural
+      grep_patterns:
+        - 'runs-on: self-hosted'
+        - 'runs-on: [self-hosted'
+      check_for: |
+        1. Self-hosted runner labels in runs-on:
+        2. Whether runner group allows fork PR workflows
+        3. Whether the runner is ephemeral (--ephemeral) or persistent
+    mitigations:
+      - Use managed runners for untrusted workloads (fork PRs)
+      - Use --ephemeral flag for self-hosted runners accepting untrusted work
+      - Use runner groups with fork PR restrictions
+      - Use containerized runners (actions-runner-controller with ephemeral pods)
+    cwe: CWE-250
+    tags: [self-hosted, persistence, runner, escalation]
+    references:
+      - https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#self-hosted-runner-security
+    status: documented

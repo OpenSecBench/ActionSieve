@@ -1,0 +1,89 @@
+patterns:
+
+  - id: workflow-run-artifact-trust
+    title: Untrusted artifact consumption in workflow_run
+    description: |
+      A workflow_run handler downloads artifacts produced by a fork PR's
+      pull_request workflow and processes them in a trusted context (base
+      branch code, with repo secrets). Artifact content is fully controlled
+      by the fork author. If the handler installs, extracts, or executes
+      that content, fork-controlled code runs with secrets.
+    platforms: [github]
+    trigger: [workflow_run]
+    trust_boundary: fork_controlled_artifact -> trusted_execution_context
+    attacker_model: fork_pr
+    impact: [supply_chain, secret_exfil, rce]
+    severity_base: high
+    requires_self_hosted: false
+    severity_notes: |
+      workflow_run always runs from the default branch with secrets.
+      Impact tiers:
+      - Handler installs/executes artifact content: SECRET EXFILTRATION
+      - Handler uploads to external storage without validation: SUPPLY CHAIN
+      - Handler only reads metadata: LOW, depends on how metadata is used
+    detection:
+      type: structural
+      grep_patterns:
+        - 'workflow_run:'
+        - 'actions/download-artifact'
+      check_for: |
+        1. Does the workflow_run handler download artifacts?
+        2. Does it npm/pip install, extract, or execute that content?
+        3. Does it upload artifact content to external storage?
+        4. Does it interpolate artifact filenames into shell commands?
+    mitigations:
+      - Validate artifact content (checksums, signatures, content inspection)
+      - Never install from downloaded artifacts in workflow_run context
+      - Use artifact metadata (not content) for decisions
+      - Scope secrets to environments with deployment protection rules
+    actions_versions:
+      - action: actions/download-artifact
+        notes: "All versions — vulnerability is in what the workflow does with content"
+      - action: actions/download-artifact
+        version: "v4+"
+        notes: "v4+ scopes to workflow run, preventing cross-run confusion. Content still attacker-controlled."
+    cwe: CWE-829
+    tags: [artifact, workflow-run, supply-chain, trust-boundary]
+    references:
+      - https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+      - https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_run
+    status: documented
+
+  - id: artifact-supply-chain
+    title: Fork PR artifact uploaded to trusted infrastructure
+    description: |
+      CI builds fork PR code and uploads artifacts to external
+      infrastructure (CDN, blob storage, package registry) without content
+      validation. Artifacts appear legitimate but contain attacker code.
+      URL structure is often predictable, on a trusted domain.
+    platforms: [github]
+    trigger: [pull_request, workflow_run]
+    trust_boundary: fork_controlled_build -> trusted_distribution_infrastructure
+    attacker_model: fork_pr
+    impact: [supply_chain]
+    severity_base: high
+    requires_self_hosted: false
+    severity_notes: |
+      Impact depends on:
+      1. Is the upload destination publicly accessible?
+      2. Is the URL predictable and on a trusted domain?
+      3. Is there automation that installs from these URLs?
+      4. Is there documentation encouraging preview build installation?
+      SHA in the URL prevents collision attacks but not social engineering.
+    detection:
+      type: structural
+      check_for: |
+        1. Build artifacts uploaded to external storage
+        2. Upload path includes fork PR's SHA or fork-controlled value
+        3. Upload happens in workflow_run or other trusted context
+        4. No content validation between build and upload
+        5. Deterministic naming (no random suffix)
+    mitigations:
+      - Content-sign artifacts before upload
+      - Validate artifact content in the upload step
+      - Use environment protection rules on upload workflows
+      - Make preview URLs clearly distinguishable from releases
+      - Don't upload fork PR builds to production infrastructure
+    cwe: CWE-829
+    tags: [artifact, supply-chain, trusted-domain, preview-builds]
+    status: documented
