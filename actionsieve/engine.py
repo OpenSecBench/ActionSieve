@@ -7,6 +7,7 @@ import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast
 
+from actionsieve.advisories import Advisory, load_advisories, match_ref
 from actionsieve.cross_step import match_cross_step
 from actionsieve.matchers import match_structural
 
@@ -35,7 +36,18 @@ class Finding:
 
 _WARNED_TYPES: set[str] = set()
 
-SUPPORTED_TYPES = frozenset({"single_step", "structural", "supply_chain", "cross_step"})
+SUPPORTED_TYPES = frozenset(
+    {"single_step", "structural", "supply_chain", "cross_step", "advisory"}
+)
+
+_advisory_cache: list[Advisory] | None = None
+
+
+def _get_advisories() -> list[Advisory]:
+    global _advisory_cache
+    if _advisory_cache is None:
+        _advisory_cache = load_advisories()
+    return _advisory_cache
 
 
 def match(model: WorkflowModel, patterns: list[dict[str, Any]]) -> list[Finding]:
@@ -52,6 +64,8 @@ def match(model: WorkflowModel, patterns: list[dict[str, Any]]) -> list[Finding]
             findings.extend(_match_supply_chain(model, pattern))
         elif dtype == "cross_step":
             findings.extend(match_cross_step(model, pattern, _make_finding))
+        elif dtype == "advisory":
+            findings.extend(_match_advisory(model, pattern))
         elif dtype and dtype not in _WARNED_TYPES:
             _WARNED_TYPES.add(dtype)
             warnings.warn(
@@ -130,6 +144,39 @@ def _match_supply_chain(
                         step=step,
                         evidence=[
                             f"{ref.raw}: ref_type={ref.ref_type}, unpinned third-party action",
+                        ],
+                        line=ref.line,
+                    )
+                )
+
+    return findings
+
+
+def _match_advisory(
+    model: WorkflowModel,
+    pattern: dict[str, Any],
+) -> list[Finding]:
+    advisories = _get_advisories()
+    if not advisories:
+        return []
+
+    findings: list[Finding] = []
+    for job in model.jobs:
+        for step in job.steps:
+            ref = step.action_ref
+            if ref is None:
+                continue
+            adv = match_ref(ref.owner, ref.name, ref.ref, advisories)
+            if adv:
+                findings.append(
+                    _make_finding(
+                        pattern=pattern,
+                        model=model,
+                        job=job,
+                        step=step,
+                        evidence=[
+                            f"{ref.raw}: matches advisory {adv.cve}",
+                            adv.description,
                         ],
                         line=ref.line,
                     )

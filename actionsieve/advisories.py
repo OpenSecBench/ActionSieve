@@ -97,6 +97,23 @@ def _index_advisories(advisories: list[Advisory]) -> dict[str, list[Advisory]]:
     return by_key
 
 
+def match_ref(
+    owner: str | None, name: str, ref: str, advisories: list[Advisory]
+) -> Advisory | None:
+    key = f"{owner}/{name}".lower() if owner else name.lower()
+    for adv in advisories:
+        if adv.action.lower() != key:
+            continue
+        for ver in adv.compromised_versions:
+            if ver.get("sha_malicious") and ref == ver["sha_malicious"]:
+                return adv
+            if ver.get("ref") and ref == ver["ref"]:
+                return adv
+        if not adv.compromised_versions:
+            return adv
+    return None
+
+
 def _is_affected(comp: Component, adv: Advisory) -> bool:
     for ver in adv.compromised_versions:
         if ver.get("sha_malicious") and comp.ref == ver["sha_malicious"]:

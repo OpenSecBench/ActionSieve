@@ -113,7 +113,7 @@
       "type": "object",
       "properties": {
         "type": {
-          "enum": ["single_step", "cross_step", "cross_job", "structural", "supply_chain"]
+          "enum": ["single_step", "cross_step", "cross_job", "structural", "supply_chain", "advisory"]
         },
         "in_block": { "type": "string" },
         "match": { "type": "string" },

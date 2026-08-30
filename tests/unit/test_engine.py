@@ -174,6 +174,20 @@ class TestArtifactSupplyChain:
         assert len(chain_findings) == 0
 
 
+class TestAdvisoryMatch:
+    def test_detects_compromised_action(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/compromised-action.yml")
+        adv_findings = [f for f in findings if f.pattern_id == "action-version-advisory"]
+        assert len(adv_findings) >= 1
+        assert adv_findings[0].severity_base == "critical"
+        assert any("CVE-2025-30066" in e for e in adv_findings[0].evidence)
+
+    def test_safe_action_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/pinned-actions.yml")
+        adv_findings = [f for f in findings if f.pattern_id == "action-version-advisory"]
+        assert len(adv_findings) == 0
+
+
 class TestMissingPermissions:
     def test_detects_missing_permissions(self) -> None:
         findings = _scan("vulnerable/.github/workflows/expression-injection.yml")
