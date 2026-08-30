@@ -56,15 +56,15 @@ TAINTED_VARIABLES = (
 VARIABLE_RE = re.compile(r"\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))")
 
 PIPELINE_SOURCE_MAP: dict[str, str] = {
-    "push": "push",
-    "merge_request_event": "merge_request",
     "external_pull_request_event": "external_pull_request",
-    "web": "web",
-    "schedule": "schedule",
-    "api": "api",
-    "trigger": "trigger",
-    "pipeline": "pipeline",
+    "merge_request_event": "merge_request",
     "parent_pipeline": "parent_pipeline",
+    "pipeline": "pipeline",
+    "trigger": "trigger",
+    "schedule": "schedule",
+    "push": "push",
+    "web": "web",
+    "api": "api",
 }
 
 FORK_REACHABLE_SOURCES = frozenset(
@@ -161,11 +161,14 @@ def _extract_triggers(raw: dict[str, Any]) -> list[Trigger]:
     return triggers
 
 
+_PIPELINE_SOURCE_RE = re.compile(
+    r"\b(" + "|".join(re.escape(k) for k in PIPELINE_SOURCE_MAP) + r")\b"
+)
+
+
 def _extract_pipeline_source(condition: str) -> str | None:
-    for source_key in PIPELINE_SOURCE_MAP:
-        if source_key in condition:
-            return source_key
-    return None
+    m = _PIPELINE_SOURCE_RE.search(condition)
+    return m.group(1) if m else None
 
 
 def _make_trigger(source: str, rule: dict[str, Any]) -> Trigger:

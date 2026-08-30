@@ -320,6 +320,45 @@ stages:
         assert wf.jobs[0].steps[0].shell_command == "echo deploying"
 
 
+class TestJobId:
+    def test_job_id_uses_identifier_not_display_name(
+        self, provider: AzureProvider, tmp_path: Path
+    ) -> None:
+        p = _write_pipeline(
+            tmp_path,
+            """\
+jobs:
+  - job: BuildJob
+    displayName: Build the project
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+      - script: echo build
+""",
+        )
+        wf = provider.parse(p)
+        assert wf.jobs[0].id == "BuildJob"
+        assert wf.jobs[0].name == "Build the project"
+
+    def test_inline_job_entry_parses_steps(self, provider: AzureProvider, tmp_path: Path) -> None:
+        p = _write_pipeline(
+            tmp_path,
+            """\
+stages:
+  - stage: Build
+    jobs:
+      - InlineJob:
+          steps:
+            - script: echo inline
+""",
+        )
+        wf = provider.parse(p)
+        assert len(wf.jobs) == 1
+        assert wf.jobs[0].id == "InlineJob"
+        assert len(wf.jobs[0].steps) == 1
+        assert wf.jobs[0].steps[0].shell_command == "echo inline"
+
+
 class TestEdgeCases:
     def test_malformed_yaml(self, provider: AzureProvider, tmp_path: Path) -> None:
         p = _write_pipeline(tmp_path, "{{invalid")

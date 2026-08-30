@@ -217,7 +217,9 @@ def _parse_job_entry(
         return []
     for key, value in data.items():
         if isinstance(value, dict) and "steps" in value:
-            return [_parse_job({key: value}, stage, lines)]
+            entry = dict(value)
+            entry["job"] = key
+            return [_parse_job(entry, stage, lines)]
     return []
 
 
@@ -229,7 +231,7 @@ def _parse_job(
     is_deployment: bool = False,
 ) -> Job:
     job_key = "deployment" if is_deployment else "job"
-    job_id = str(data.get("displayName", data.get(job_key, stage)))
+    job_id = str(data.get(job_key, stage))
 
     pool = data.get("pool", {})
     runner_raw = "default"

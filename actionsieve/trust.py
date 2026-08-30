@@ -11,9 +11,9 @@ if TYPE_CHECKING:
 def score_components(inv: Inventory) -> None:
     for comp in inv.components:
         comp.trust_score = _compute_score(comp)
-        comp.risk_factors = _compute_risks(comp) + [
-            r for r in comp.risk_factors if r not in _compute_risks(comp)
-        ]
+        computed = _compute_risks(comp)
+        computed_set = set(computed)
+        comp.risk_factors = computed + [r for r in comp.risk_factors if r not in computed_set]
 
 
 def _compute_score(comp: Component) -> str:

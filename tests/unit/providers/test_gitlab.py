@@ -217,6 +217,23 @@ build:
         wf = provider.parse(ci)
         assert wf.triggers[0].is_privileged is True
 
+    def test_parent_pipeline_not_confused_with_pipeline(
+        self, provider: GitLabProvider, tmp_path: Path
+    ) -> None:
+        ci = _write_ci(
+            tmp_path,
+            """\
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "parent_pipeline"'
+build:
+  script:
+    - echo hi
+""",
+        )
+        wf = provider.parse(ci)
+        assert wf.triggers[0].raw_event == "parent_pipeline"
+
 
 class TestParseExpressions:
     def test_detects_tainted_variables(self, provider: GitLabProvider, tmp_path: Path) -> None:

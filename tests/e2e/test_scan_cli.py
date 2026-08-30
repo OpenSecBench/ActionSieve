@@ -168,6 +168,48 @@ class TestChainDetectionFindings:
         assert len(chain_findings) == 0
 
 
+class TestTrustRepoProfile:
+    def _make_repo(self, tmp_path: Path) -> Path:
+        wf_dir = tmp_path / ".github" / "workflows"
+        wf_dir.mkdir(parents=True)
+        (wf_dir / "ci.yml").write_text(
+            """\
+name: CI
+on: [pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ github.event.pull_request.title }}"
+"""
+        )
+        (tmp_path / ".actionsieve.yml").write_text(
+            """\
+profile:
+  suppress:
+    - expr-injection
+"""
+        )
+        return tmp_path
+
+    def test_repo_profile_ignored_by_default(self, tmp_path: Path) -> None:
+        repo = self._make_repo(tmp_path)
+        runner = CliRunner()
+        result = runner.invoke(main, ["scan", str(repo)])
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "expr-injection-run" in ids
+
+    def test_repo_profile_loaded_with_flag(self, tmp_path: Path) -> None:
+        repo = self._make_repo(tmp_path)
+        runner = CliRunner()
+        result = runner.invoke(main, ["scan", "--trust-repo-profile", str(repo)])
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "expr-injection-run" not in ids
+
+
 class TestVersionFlag:
     def test_version(self) -> None:
         runner = CliRunner()
