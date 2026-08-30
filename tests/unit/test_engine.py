@@ -277,6 +277,30 @@ class TestUnpinnedContainerImage:
         assert len(img_findings) == 0
 
 
+class TestCompositeActionScanning:
+    def test_detects_pipe_to_shell_in_composite(self) -> None:
+        from actionsieve.scanner import _resolve_composite_actions
+
+        provider = GitHubProvider()
+        model = provider.parse(FIXTURES / "vulnerable/.github/workflows/composite-action.yml")
+        _resolve_composite_actions(model, FIXTURES / "vulnerable")
+        patterns = load_patterns(platform="github")
+        findings = match(model, patterns)
+        pipe_findings = [f for f in findings if f.pattern_id == "pipe-to-shell"]
+        assert len(pipe_findings) >= 1
+
+    def test_safe_composite_no_pipe_to_shell(self) -> None:
+        from actionsieve.scanner import _resolve_composite_actions
+
+        provider = GitHubProvider()
+        model = provider.parse(FIXTURES / "safe/.github/workflows/composite-action-safe.yml")
+        _resolve_composite_actions(model, FIXTURES / "safe")
+        patterns = load_patterns(platform="github")
+        findings = match(model, patterns)
+        pipe_findings = [f for f in findings if f.pattern_id == "pipe-to-shell"]
+        assert len(pipe_findings) == 0
+
+
 class TestNoFalsePositivesOnSafe:
     def test_env_indirection(self) -> None:
         findings = _scan("safe/.github/workflows/env-indirection.yml")

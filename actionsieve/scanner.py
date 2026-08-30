@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+import yaml
 
 from actionsieve import engine
+from actionsieve.model import ComponentRef, Expression, Step
 from actionsieve.output import render
 from actionsieve.patterns import load_patterns
 from actionsieve.profiles import load_profile
@@ -23,6 +27,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from actionsieve.engine import Finding
+    from actionsieve.model import WorkflowModel
 
 EXIT_CLEAN = 0
 EXIT_FINDINGS = 1
@@ -80,6 +85,7 @@ def scan(
             except ParseError:
                 continue
 
+            _resolve_composite_actions(model, repo_path)
             findings = engine.match(model, patterns)
 
             for finding in findings:
@@ -148,6 +154,111 @@ def _relative_path(file_path: Path, repo_path: Path) -> str:
         return str(file_path.relative_to(repo_path))
     except ValueError:
         return str(file_path)
+
+
+MAX_COMPOSITE_DEPTH = 3
+MAX_COMPOSITE_FILE_SIZE = 1_048_576
+
+
+def _resolve_composite_actions(model: WorkflowModel, repo_path: Path, depth: int = 0) -> None:
+    if depth >= MAX_COMPOSITE_DEPTH:
+        return
+    for job in model.jobs:
+        extra: list[Step] = []
+        for step in job.steps:
+            ref = step.action_ref
+            if ref is None:
+                continue
+            local_path = _local_action_path(ref)
+            if local_path is None:
+                continue
+            steps = _parse_composite_action(repo_path, local_path)
+            if steps:
+                extra.extend(steps)
+        if extra:
+            base = len(job.steps)
+            for i, s in enumerate(extra):
+                s.index = base + i
+            job.steps.extend(extra)
+
+
+def _local_action_path(ref: ComponentRef) -> str | None:
+    if ref.raw.startswith("./"):
+        return ref.raw.removeprefix("./")
+    if ref.raw.startswith(".\\"):
+        return ref.raw.removeprefix(".\\")
+    if ref.owner == ".":
+        return ref.name
+    return None
+
+
+def _parse_composite_action(repo_path: Path, action_path: str) -> list[Step]:
+    for filename in ("action.yml", "action.yaml"):
+        candidate = repo_path / action_path / filename
+        if candidate.is_file():
+            return _read_composite_steps(candidate, action_path)
+    return []
+
+
+def _read_composite_steps(path: Path, action_path: str) -> list[Step]:
+    if path.stat().st_size > MAX_COMPOSITE_FILE_SIZE:
+        return []
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (yaml.YAMLError, OSError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    runs = data.get("runs", {})
+    if not isinstance(runs, dict) or runs.get("using") != "composite":
+        return []
+    raw_steps = runs.get("steps", [])
+    if not isinstance(raw_steps, list):
+        return []
+
+    steps: list[Step] = []
+    lines = path.read_text(encoding="utf-8").splitlines()
+    for i, s in enumerate(raw_steps):
+        if not isinstance(s, dict):
+            continue
+        step = _composite_step(i, s, action_path, lines)
+        if step:
+            steps.append(step)
+    return steps
+
+
+def _composite_step(
+    index: int, data: dict[str, Any], action_path: str, lines: list[str]
+) -> Step | None:
+    shell_command: str | None = data.get("run")
+    if isinstance(shell_command, str):
+        expressions = _extract_composite_expressions(shell_command)
+        return Step(
+            index=index,
+            type="shell",
+            name=data.get("name") or f"composite:{action_path}:{index}",
+            shell_command=shell_command,
+            expressions=expressions,
+        )
+    return None
+
+
+def _extract_composite_expressions(text: str) -> list[Expression]:
+    exprs: list[Expression] = []
+    for m in re.finditer(r"\$\{\{\s*(.*?)\s*\}\}", text):
+        context_path = m.group(1).strip()
+        is_tainted = context_path.startswith("inputs.")
+        exprs.append(
+            Expression(
+                raw=m.group(0),
+                context_path=context_path,
+                location="run",
+                is_in_shell=True,
+                is_tainted=is_tainted,
+                line=0,
+            )
+        )
+    return exprs
 
 
 def _compute_exit_code(findings: list[Finding], fail_on: str | None) -> int:

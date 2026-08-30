@@ -1,0 +1,16 @@
+name: Composite test
+on: push
+
+permissions:
+  contents: read
+
+jobs:
+  greet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/greet
+        with:
+          name: "safe-value"

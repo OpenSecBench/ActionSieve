@@ -159,6 +159,9 @@ def _match_supply_chain(
             if ref is None:
                 continue
 
+            if ref.owner == "." or ref.raw.startswith("./"):
+                continue
+
             if not ref.is_pinned and not ref.is_first_party:
                 findings.append(
                     _make_finding(
