@@ -1,0 +1,8 @@
+advisories:
+  - action: actions/checkout
+    cve: CVE-TEST-0001
+    severity: high
+    description: Test advisory
+    date_disclosed: "2099-01-01"
+    compromised_versions:
+      - ref: v4

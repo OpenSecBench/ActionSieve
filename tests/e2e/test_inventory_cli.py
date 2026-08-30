@@ -70,28 +70,6 @@ class TestInventoryCommand:
         assert data["summary"]["total_refs"] > 0
 
 
-class TestInventoryCheck:
-    def test_check_finds_advisory(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["inventory", "--check", str(FIXTURES / "vulnerable")],
-        )
-        assert result.exit_code == 3
-        data = json.loads(result.output)
-        assert data["summary"]["advisory_matches"] > 0
-
-    def test_check_safe_no_advisory(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["inventory", "--check", str(FIXTURES / "safe")],
-        )
-        assert result.exit_code == 0
-        data = json.loads(result.output)
-        assert data["summary"]["advisory_matches"] == 0
-
-
 class TestInventoryTrust:
     def test_trust_scores_in_output(self) -> None:
         runner = CliRunner()

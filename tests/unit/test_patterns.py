@@ -4,72 +4,18 @@ import pytest
 
 from actionsieve.patterns import PatternError, load_patterns
 
-PATTERNS_DIR = Path(__file__).parent.parent.parent / "patterns"
-
-
-class TestLoadBuiltinPatterns:
-    def test_loads_all_patterns(self) -> None:
-        patterns = load_patterns()
-        assert len(patterns) > 0
-
-    def test_all_patterns_have_required_fields(self) -> None:
-        for p in load_patterns():
-            assert "id" in p, f"Pattern missing id: {p}"
-            assert "title" in p, f"Pattern {p['id']} missing title"
-            assert "platforms" in p, f"Pattern {p['id']} missing platforms"
-            assert "severity_base" in p, f"Pattern {p['id']} missing severity_base"
-            assert "detection" in p, f"Pattern {p['id']} missing detection"
-            assert "attacker_model" in p, f"Pattern {p['id']} missing attacker_model"
-            assert "impact" in p, f"Pattern {p['id']} missing impact"
-
-    def test_all_ids_unique(self) -> None:
-        patterns = load_patterns()
-        ids = [p["id"] for p in patterns]
-        assert len(ids) == len(set(ids))
-
-    def test_all_ids_kebab_case(self) -> None:
-        import re
-
-        for p in load_patterns():
-            assert re.match(r"^[a-z0-9][a-z0-9-]*$", p["id"]), f"Bad ID format: {p['id']}"
-
-    def test_valid_severity_values(self) -> None:
-        valid = {"critical", "high", "medium", "low", "info"}
-        for p in load_patterns():
-            assert p["severity_base"] in valid, f"Bad severity in {p['id']}: {p['severity_base']}"
-
-
-class TestFilterByPlatform:
-    def test_filter_github(self) -> None:
-        github = load_patterns(platform="github")
-        for p in github:
-            platforms = p["platforms"]
-            assert platforms == "all" or "github" in platforms
-
-    def test_filter_removes_other_platforms(self) -> None:
-        all_patterns = load_patterns()
-        github = load_patterns(platform="github")
-        assert len(github) <= len(all_patterns)
-
-    def test_filter_nonexistent_platform(self) -> None:
-        result = load_patterns(platform="nonexistent")
-        all_platform = [p for p in load_patterns() if p.get("platforms") == "all"]
-        assert len(result) == len(all_platform)
-
-
-class TestLoadFromPath:
-    def test_load_single_file(self) -> None:
-        patterns = load_patterns(PATTERNS_DIR / "expression-injection.yml")
-        assert len(patterns) > 0
-        assert all("injection" in p["id"] or "script" in p["id"] for p in patterns)
-
-    def test_load_directory(self) -> None:
-        patterns = load_patterns(PATTERNS_DIR)
-        assert len(patterns) > 0
-
-    def test_nonexistent_path(self) -> None:
-        with pytest.raises(PatternError, match="does not exist"):
-            load_patterns(Path("/nonexistent/path"))
+VALID_BASE = (
+    "patterns:\n"
+    "  - id: diff-test\n"
+    "    title: Test\n"
+    "    description: Test\n"
+    "    platforms: all\n"
+    "    attacker_model: any\n"
+    "    impact: rce\n"
+    "    severity_base: high\n"
+    "    detection:\n"
+    "      type: single_step\n"
+)
 
 
 class TestValidation:
@@ -120,20 +66,6 @@ class TestValidation:
         bad.write_text("patterns:\n  - id: test\n    title: Test\n")
         with pytest.raises(PatternError, match="Schema validation failed"):
             load_patterns(bad)
-
-
-VALID_BASE = (
-    "patterns:\n"
-    "  - id: diff-test\n"
-    "    title: Test\n"
-    "    description: Test\n"
-    "    platforms: all\n"
-    "    attacker_model: any\n"
-    "    impact: rce\n"
-    "    severity_base: high\n"
-    "    detection:\n"
-    "      type: single_step\n"
-)
 
 
 class TestDiffScopeSchema:
@@ -197,3 +129,20 @@ class TestDiffScopeSchema:
         f.write_text(VALID_BASE + "    diff_scope: invalid\n")
         with pytest.raises(PatternError, match="Schema validation failed"):
             load_patterns(f)
+
+
+class TestNoPathError:
+    def test_no_path_no_env_raises(self) -> None:
+        import os
+
+        env = os.environ.pop("ACTIONSIEVE_PATTERNS", None)
+        try:
+            with pytest.raises(PatternError, match="No patterns path"):
+                load_patterns()
+        finally:
+            if env is not None:
+                os.environ["ACTIONSIEVE_PATTERNS"] = env
+
+    def test_nonexistent_path(self) -> None:
+        with pytest.raises(PatternError, match="does not exist"):
+            load_patterns(Path("/nonexistent/path"))

@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml
+
+if TYPE_CHECKING:
+    import pytest
 
 from actionsieve.corpus import (
     collect_coverage,
@@ -16,6 +20,7 @@ from actionsieve.corpus import (
 )
 
 GITHUB_FIXTURES = Path(__file__).parent.parent / "fixtures" / "github"
+MINIMAL_PATTERNS = str(Path(__file__).parent.parent / "fixtures" / "minimal_patterns")
 
 
 def _make_case(tmp_path: Path, case_name: str, expected: dict) -> Path:
@@ -59,20 +64,22 @@ class TestDiscoverCases:
 
 
 class TestRunCase:
-    def test_pass_with_expected_findings(self) -> None:
+    def test_pass_with_expected_findings(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("ACTIONSIEVE_PATTERNS", MINIMAL_PATTERNS)
         vuln = GITHUB_FIXTURES / "vulnerable"
         expected = {
             "platform": "github",
             "expected_exit_code": 1,
             "expected_findings": [
-                {"pattern_id": "expr-injection-run"},
+                {"pattern_id": "test-expr-injection"},
             ],
         }
         result = run_case(vuln, expected, GITHUB_FIXTURES)
         assert result.findings_ok
         assert not result.missing_findings
 
-    def test_fail_missing_finding(self) -> None:
+    def test_fail_missing_finding(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("ACTIONSIEVE_PATTERNS", MINIMAL_PATTERNS)
         safe = GITHUB_FIXTURES / "safe"
         expected = {
             "platform": "github",
@@ -85,7 +92,8 @@ class TestRunCase:
         assert not result.findings_ok
         assert "nonexistent-pattern" in result.missing_findings[0]
 
-    def test_pass_no_findings_expected(self) -> None:
+    def test_pass_no_findings_expected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("ACTIONSIEVE_PATTERNS", MINIMAL_PATTERNS)
         safe = GITHUB_FIXTURES / "safe"
         expected = {
             "platform": "github",
@@ -96,7 +104,8 @@ class TestRunCase:
         assert result.exit_code_ok
         assert result.findings_ok
 
-    def test_false_positive_detection(self) -> None:
+    def test_false_positive_detection(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("ACTIONSIEVE_PATTERNS", MINIMAL_PATTERNS)
         vuln = GITHUB_FIXTURES / "vulnerable"
         expected = {
             "platform": "github",
@@ -106,7 +115,8 @@ class TestRunCase:
         assert not result.passed
         assert result.false_positives
 
-    def test_exit_code_mismatch(self) -> None:
+    def test_exit_code_mismatch(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("ACTIONSIEVE_PATTERNS", MINIMAL_PATTERNS)
         safe = GITHUB_FIXTURES / "safe"
         expected = {
             "platform": "github",
@@ -118,7 +128,8 @@ class TestRunCase:
 
 
 class TestUpdateExpected:
-    def test_updates_yaml(self, tmp_path: Path) -> None:
+    def test_updates_yaml(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("ACTIONSIEVE_PATTERNS", MINIMAL_PATTERNS)
         case_dir = tmp_path / "case"
         case_dir.mkdir()
         wf_dir = case_dir / ".github" / "workflows"
@@ -138,7 +149,8 @@ class TestUpdateExpected:
 
 
 class TestCollectCoverage:
-    def test_coverage_report(self, tmp_path: Path) -> None:
+    def test_coverage_report(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("ACTIONSIEVE_PATTERNS", MINIMAL_PATTERNS)
         corpus = tmp_path / "corpus"
         case_dir = corpus / "github" / "vulnerable" / "test"
         case_dir.mkdir(parents=True)
@@ -146,7 +158,7 @@ class TestCollectCoverage:
             yaml.dump(
                 {
                     "platform": "github",
-                    "expected_findings": [{"pattern_id": "expr-injection-run"}],
+                    "expected_findings": [{"pattern_id": "test-expr-injection"}],
                 }
             ),
             encoding="utf-8",
@@ -154,8 +166,8 @@ class TestCollectCoverage:
 
         cases = discover_cases(corpus)
         cov = collect_coverage(cases, corpus)
-        assert "expr-injection-run" in cov
-        assert len(cov["expr-injection-run"]["vulnerable"]) == 1
+        assert "test-expr-injection" in cov
+        assert len(cov["test-expr-injection"]["vulnerable"]) == 1
 
 
 class TestTableGeneration:
@@ -169,7 +181,7 @@ class TestTableGeneration:
                     "platform": "github",
                     "description": "Test case",
                     "expected_exit_code": 1,
-                    "expected_findings": [{"pattern_id": "expr-injection-run"}],
+                    "expected_findings": [{"pattern_id": "test-expr-injection"}],
                 }
             ),
             encoding="utf-8",
@@ -179,7 +191,7 @@ class TestTableGeneration:
         assert len(cases) == 1
         assert cases[0]["platform"] == "github"
         assert cases[0]["name"] == "test-case"
-        assert "expr-injection-run" in cases[0]["pattern_ids"]
+        assert "test-expr-injection" in cases[0]["pattern_ids"]
 
     def test_generate_full_report(self, tmp_path: Path) -> None:
         corpus = tmp_path / "corpus"
@@ -189,7 +201,7 @@ class TestTableGeneration:
             yaml.dump(
                 {
                     "description": "Expr injection",
-                    "expected_findings": [{"pattern_id": "expr-injection-run"}],
+                    "expected_findings": [{"pattern_id": "test-expr-injection"}],
                 }
             ),
             encoding="utf-8",
@@ -200,7 +212,7 @@ class TestTableGeneration:
         assert "# Corpus Index" in report
         assert "Platform Summary" in report
         assert "Pattern Coverage" in report
-        assert "expr-injection-run" in report
+        assert "test-expr-injection" in report
 
     def test_generate_summary_only(self, tmp_path: Path) -> None:
         corpus = tmp_path / "corpus"

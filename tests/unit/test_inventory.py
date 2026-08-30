@@ -1,9 +1,12 @@
 from pathlib import Path
 
+import pytest
+
 from actionsieve.inventory import Inventory, _normalize_git_url, collect, run_inventory
 from actionsieve.providers.github import GitHubProvider
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "github"
+MINIMAL_PATTERNS = str(Path(__file__).parent.parent / "fixtures" / "minimal_patterns")
 
 
 def _parse_fixture(fixture: str) -> list:
@@ -135,7 +138,8 @@ class TestRunInventory:
         assert isinstance(inv, Inventory)
         assert inv.total_refs > 0
 
-    def test_with_check(self) -> None:
+    def test_with_check(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("ACTIONSIEVE_PATTERNS", MINIMAL_PATTERNS)
         inv = run_inventory(FIXTURES / "vulnerable", platform="github", check=True)
         assert isinstance(inv, Inventory)
         assert inv.advisory_matches > 0

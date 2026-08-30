@@ -1,0 +1,46 @@
+patterns:
+  - id: test-expr-injection
+    title: Test expression injection
+    description: Test pattern for expression injection detection
+    platforms: [github]
+    attacker_model: fork_pr
+    impact: rce
+    severity_base: high
+    detection:
+      type: single_step
+      in_block: run
+      grep_patterns:
+        - "${{ github.event.pull_request.title }}"
+        - "${{ github.event.pull_request.body }}"
+    tags:
+      - injection
+    cwe: CWE-78
+    mitigations:
+      - Use env var indirection
+
+  - id: test-mutable-ref
+    title: Test mutable action ref
+    description: Test pattern for mutable action reference detection
+    platforms: all
+    attacker_model: action_maintainer_compromise
+    impact: supply_chain
+    severity_base: medium
+    detection:
+      type: supply_chain
+    tags:
+      - supply-chain
+
+  - id: test-checkout-persist
+    title: Test checkout persists credentials
+    description: Test pattern for checkout credential persistence
+    platforms:
+      - github
+    attacker_model: fork_pr
+    impact:
+      - secret_exfil
+    severity_base: low
+    detection:
+      type: structural
+      match: checkout_persist_credentials
+    tags:
+      - hardening

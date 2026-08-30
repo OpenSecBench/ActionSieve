@@ -80,9 +80,11 @@ actionsieve/
     codebuild.py      — AWS CodeBuild provider
     cloudbuild.py     — Google Cloud Build provider
 
-patterns/                  — YAML pattern catalog (data, not code)
-patterns/advisories/       — known-compromised component database
+  schema.json     — JSON Schema for pattern validation (ships with the tool)
+  corpus.py       — corpus test runner and reporting
+
 tests/fixtures/{platform}/ — sample pipelines (vulnerable/ and safe/)
+tests/fixtures/minimal_patterns/ — small test-only patterns for engine tests
 ```
 
 Each module has a single responsibility. If a module grows past ~600 lines,
@@ -97,11 +99,13 @@ it's probably doing too much — split it.
 - **Fixture-based** — tests/fixtures/ has real and synthetic pipeline files
   organized by platform, each with vulnerable/ and safe/ subdirectories
 - **E2E tests** — full `actionsieve scan <fixture-repo>` runs that verify
-  CLI exit codes, output format correctness, and expected findings
-- **Pattern validation tests** — every pattern in the catalog must load
-  without errors, have required fields, and match at least one fixture
+  CLI exit codes, output format correctness, and scanner mechanics
 - **Provider tests** — each provider is tested independently against its
   platform's fixtures, producing the same normalized WorkflowModel shape
+- **Corpus-separated** — detection accuracy tests ("pattern X fires on
+  fixture Y") live in the corpus repo, not here. This repo tests the
+  engine, not the patterns. Use `tests/fixtures/minimal_patterns/` for
+  tests that need a pattern to exercise scanner mechanics.
 
 ### Running tests
 
@@ -159,24 +163,21 @@ automatically.
 
 ## Patterns
 
-Pattern catalog lives in `patterns/` — one YAML file per attack class:
+Patterns live in a separate repo (`actionsieve-corpus`) — not in this
+repo. The scanner is a pure tool; patterns are data provided externally.
 
-```
-patterns/
-  expression-injection.yml    — ${{ }}, $CI_*, $[ ] injection
-  artifact-trust.yml          — workflow_run artifacts, cross-pipeline deps
-  dangerous-triggers.yml      — pull_request_target, trigger:, etc.
-  output-injection.yml        — GITHUB_OUTPUT/ENV delimiter, step outputs
-  supply-chain.yml            — unpinned refs, mutable tags, advisories
-  self-hosted-runners.yml     — persistence, escape, shared runner risks
-  secret-exposure.yml         — logging, env leaks, token scope abuse
-  template-injection.yml      — GitLab include:, Azure templates, Jenkins @Library
-  schema.json                 — JSON Schema for validation
-```
+To use patterns, either:
+- `--patterns <dir-or-file>` CLI flag
+- `ACTIONSIEVE_PATTERNS` environment variable
 
-Patterns are data — adding a pattern should never require changing scanner
-code. The loader globs all `*.yml` files in the patterns directory and
-merges them. Pattern IDs must be globally unique across files.
+Without either, the scanner errors with a clear message.
+
+The advisory database is resolved from an `advisories/` subdir under the
+patterns path. If no advisories dir exists, advisory checks return empty.
+
+The JSON Schema for validating patterns ships with the tool at
+`actionsieve/schema.json`. The loader validates every pattern file against
+it. Invalid patterns fail loud. Pattern IDs must be globally unique.
 
 Every pattern needs:
 - `id` — unique kebab-case identifier
@@ -186,8 +187,8 @@ Every pattern needs:
 - `impact` — what happens (rce, secret_exfil, supply_chain)
 - `severity_base` — starting severity before context modifiers
 
-The `patterns.py` loader validates against `patterns/schema.json`.
-Invalid patterns fail loud. `--patterns` accepts a directory or single file.
+Patterns are data — adding a pattern should never require changing scanner
+code.
 
 ## Security
 
@@ -239,7 +240,7 @@ enforce quality at each commit.
 - `CLAUDE.md` — yes, project instructions for all contributors (human + AI)
 - `TODO.md` — yes, shared task tracking
 - `docs/` — yes, architecture and design docs
-- `patterns/` — yes, shipped as package data
+- `actionsieve/schema.json` — yes, pattern validation schema ships with the tool
 - `.pre-commit-config.yaml`, `ruff.toml` — yes, shared dev tooling config
 
 ## .gitignore

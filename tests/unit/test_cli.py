@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from click.testing import CliRunner
 
 from actionsieve import __version__
@@ -39,12 +41,12 @@ class TestCLI:
         assert "--check" in result.output
         assert "--platform" in result.output
 
-    def test_scan_runs_on_cwd(self) -> None:
+    def test_scan_accepts_path(self, tmp_path: Path) -> None:
         runner = CliRunner()
-        result = runner.invoke(main, ["scan", "."])
+        result = runner.invoke(main, ["scan", str(tmp_path)])
         assert result.exit_code == 0
 
-    def test_inventory_runs_on_cwd(self) -> None:
+    def test_inventory_accepts_path(self, tmp_path: Path) -> None:
         runner = CliRunner()
-        result = runner.invoke(main, ["inventory", "."])
+        result = runner.invoke(main, ["inventory", str(tmp_path)])
         assert result.exit_code == 0

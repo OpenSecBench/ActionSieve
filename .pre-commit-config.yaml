@@ -15,10 +15,9 @@ repos:
         pass_filenames: false
         types: [python]
 
-      # pytest disabled during patterns migration — re-enable after
-      # - id: pytest
-      #   name: pytest
-      #   entry: .venv/bin/pytest
-      #   language: system
-      #   pass_filenames: false
-      #   types: [python]
+      - id: pytest
+        name: pytest
+        entry: .venv/bin/pytest
+        language: system
+        pass_filenames: false
+        types: [python]

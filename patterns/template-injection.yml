@@ -1,3 +1,0 @@
-patterns: []
-# GitLab include: remote, Azure template expressions, Jenkins @Library.
-# Populated in Phase 4+ when GitLab/Azure/Jenkins providers ship.

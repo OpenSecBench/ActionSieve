@@ -1,112 +1,148 @@
 from pathlib import Path
 
-from actionsieve.advisories import check_advisories, load_advisories
+import yaml
+
+from actionsieve.advisories import Advisory, check_advisories, load_advisories, match_ref
 from actionsieve.inventory import Component, ComponentLocation, Inventory
 
-DB_PATH = Path(__file__).parent.parent.parent / "patterns" / "advisories"
+
+def _write_db(tmp_path: Path) -> Path:
+    db = tmp_path / "advisories"
+    db.mkdir()
+    (db / "test.yml").write_text(
+        yaml.dump(
+            {
+                "advisories": [
+                    {
+                        "action": "evil/action",
+                        "cve": "CVE-2099-0001",
+                        "severity": "critical",
+                        "description": "Test advisory",
+                        "date_disclosed": "2099-01-01",
+                        "compromised_versions": [
+                            {"ref": "v1", "sha_malicious": "abc123"},
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    return db
+
+
+def _make_component(owner: str, name: str, ref: str) -> Component:
+    return Component(
+        raw=f"{owner}/{name}@{ref}",
+        owner=owner,
+        name=name,
+        ref=ref,
+        ref_type="tag",
+        is_pinned=False,
+        is_first_party=False,
+        resolved_sha=None,
+        platform="github",
+        locations=[ComponentLocation(file="ci.yml", job="build", step=0, line=5)],
+    )
+
+
+def _make_inventory(components: list[Component]) -> Inventory:
+    return Inventory(
+        components=components,
+        total_refs=len(components),
+        pinned_count=0,
+        unpinned_count=len(components),
+        first_party_count=0,
+        third_party_count=len(components),
+    )
 
 
 class TestLoadAdvisories:
-    def test_loads_builtin_db(self) -> None:
-        advisories = load_advisories()
-        assert len(advisories) > 0
+    def test_loads_from_path(self, tmp_path: Path) -> None:
+        db = _write_db(tmp_path)
+        advisories = load_advisories(db)
+        assert len(advisories) == 1
+        assert advisories[0].cve == "CVE-2099-0001"
 
-    def test_advisory_fields(self) -> None:
-        advisories = load_advisories()
-        for adv in advisories:
-            assert adv.action
-            assert adv.severity in ("critical", "high", "medium", "low", "info")
+    def test_no_path_returns_empty(self) -> None:
+        import os
 
-    def test_tj_actions_present(self) -> None:
-        advisories = load_advisories()
-        names = [a.action for a in advisories]
-        assert "tj-actions/changed-files" in names
+        env = os.environ.pop("ACTIONSIEVE_PATTERNS", None)
+        try:
+            advisories = load_advisories()
+            assert advisories == []
+        finally:
+            if env is not None:
+                os.environ["ACTIONSIEVE_PATTERNS"] = env
 
-    def test_owner_and_name(self) -> None:
-        advisories = load_advisories()
-        tj = next(a for a in advisories if a.action == "tj-actions/changed-files")
-        assert tj.owner == "tj-actions"
-        assert tj.name == "changed-files"
-
-    def test_loads_from_path(self) -> None:
-        advisories = load_advisories(DB_PATH)
-        assert len(advisories) > 0
+    def test_advisory_fields(self, tmp_path: Path) -> None:
+        db = _write_db(tmp_path)
+        adv = load_advisories(db)[0]
+        assert adv.action == "evil/action"
+        assert adv.owner == "evil"
+        assert adv.name == "action"
+        assert adv.severity == "critical"
 
 
 class TestCheckAdvisories:
-    def _make_inventory(self, components: list[Component]) -> Inventory:
-        return Inventory(
-            components=components,
-            total_refs=len(components),
-            pinned_count=0,
-            unpinned_count=len(components),
-            first_party_count=0,
-            third_party_count=len(components),
-        )
-
-    def test_matches_compromised_ref(self) -> None:
-        comp = Component(
-            raw="tj-actions/changed-files@v35",
-            owner="tj-actions",
-            name="changed-files",
-            ref="v35",
-            ref_type="tag",
-            is_pinned=False,
-            is_first_party=False,
-            resolved_sha=None,
-            platform="github",
-            locations=[ComponentLocation(file="ci.yml", job="build", step=0, line=5)],
-        )
-        inv = check_advisories(self._make_inventory([comp]))
+    def test_matches_compromised_ref(self, tmp_path: Path) -> None:
+        db = _write_db(tmp_path)
+        comp = _make_component("evil", "action", "v1")
+        inv = check_advisories(_make_inventory([comp]), db_path=db)
         assert inv.advisory_matches > 0
-        assert len(comp.advisory_ids) > 0
-        assert "CVE-2025-30066" in comp.advisory_ids
+        assert "CVE-2099-0001" in comp.advisory_ids
 
-    def test_no_match_for_safe_action(self) -> None:
-        comp = Component(
-            raw="actions/checkout@v4",
-            owner="actions",
-            name="checkout",
-            ref="v4",
-            ref_type="tag",
-            is_pinned=False,
-            is_first_party=True,
-            resolved_sha=None,
-            platform="github",
-            locations=[ComponentLocation(file="ci.yml", job="build", step=0, line=5)],
-        )
-        inv = check_advisories(self._make_inventory([comp]))
+    def test_matches_by_malicious_sha(self, tmp_path: Path) -> None:
+        db = _write_db(tmp_path)
+        comp = _make_component("evil", "action", "abc123")
+        inv = check_advisories(_make_inventory([comp]), db_path=db)
+        assert inv.advisory_matches > 0
+
+    def test_no_match_for_safe_action(self, tmp_path: Path) -> None:
+        db = _write_db(tmp_path)
+        comp = _make_component("safe", "action", "v1")
+        inv = check_advisories(_make_inventory([comp]), db_path=db)
         assert inv.advisory_matches == 0
-        assert len(comp.advisory_ids) == 0
 
-    def test_matches_by_malicious_sha(self) -> None:
-        comp = Component(
-            raw="tj-actions/changed-files@0e58ed8671d6b60d0890c21b07f8835ace038e67",
-            owner="tj-actions",
-            name="changed-files",
-            ref="0e58ed8671d6b60d0890c21b07f8835ace038e67",
-            ref_type="sha",
-            is_pinned=True,
-            is_first_party=False,
-            resolved_sha=None,
-            platform="github",
-            locations=[ComponentLocation(file="ci.yml", job="build", step=0, line=5)],
-        )
-        inv = check_advisories(self._make_inventory([comp]))
+    def test_case_insensitive_match(self, tmp_path: Path) -> None:
+        db = _write_db(tmp_path)
+        comp = _make_component("Evil", "Action", "v1")
+        inv = check_advisories(_make_inventory([comp]), db_path=db)
         assert inv.advisory_matches > 0
 
-    def test_case_insensitive_match(self) -> None:
-        comp = Component(
-            raw="TJ-Actions/Changed-Files@v35",
-            owner="TJ-Actions",
-            name="Changed-Files",
-            ref="v35",
-            ref_type="tag",
-            is_pinned=False,
-            is_first_party=False,
-            resolved_sha=None,
-            platform="github",
-            locations=[ComponentLocation(file="ci.yml", job="build", step=0, line=5)],
+
+class TestMatchRef:
+    def test_match_by_ref(self) -> None:
+        adv = Advisory(
+            action="evil/action",
+            cve="CVE-2099-0001",
+            severity="critical",
+            description="",
+            date_disclosed="",
+            compromised_versions=[{"ref": "v1"}],
         )
-        inv = check_advisories(self._make_inventory([comp]))
-        assert inv.advisory_matches > 0
+        result = match_ref("evil", "action", "v1", [adv])
+        assert result is not None
+        assert result.cve == "CVE-2099-0001"
+
+    def test_no_match_different_ref(self) -> None:
+        adv = Advisory(
+            action="evil/action",
+            cve="CVE-2099-0001",
+            severity="critical",
+            description="",
+            date_disclosed="",
+            compromised_versions=[{"ref": "v1"}],
+        )
+        assert match_ref("evil", "action", "v2", [adv]) is None
+
+    def test_match_no_versions_matches_any(self) -> None:
+        adv = Advisory(
+            action="evil/action",
+            cve="CVE-2099-0001",
+            severity="critical",
+            description="",
+            date_disclosed="",
+        )
+        result = match_ref("evil", "action", "v999", [adv])
+        assert result is not None

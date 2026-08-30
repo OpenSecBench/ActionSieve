@@ -9,21 +9,12 @@ from actionsieve.scanner import (
 )
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "github"
+MINIMAL_PATTERNS = Path(__file__).parent.parent / "fixtures" / "minimal_patterns"
 
 
 class TestScanVulnerable:
-    def test_finds_expression_injection(self) -> None:
-        result = scan(FIXTURES / "vulnerable", platform="github")
-        ids = [f.pattern_id for f in result.findings]
-        assert "expr-injection-run" in ids
-
-    def test_finds_unpinned_refs(self) -> None:
-        result = scan(FIXTURES / "vulnerable", platform="github")
-        ids = [f.pattern_id for f in result.findings]
-        assert "mutable-action-ref" in ids
-
     def test_findings_sorted_by_severity(self) -> None:
-        result = scan(FIXTURES / "vulnerable", platform="github")
+        result = scan(FIXTURES / "vulnerable", platform="github", patterns_path=MINIMAL_PATTERNS)
         assert len(result.findings) > 0
         severity_order = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
         severities = [
@@ -32,7 +23,7 @@ class TestScanVulnerable:
         assert severities == sorted(severities, reverse=True)
 
     def test_severity_computed_set(self) -> None:
-        result = scan(FIXTURES / "vulnerable", platform="github")
+        result = scan(FIXTURES / "vulnerable", platform="github", patterns_path=MINIMAL_PATTERNS)
         assert len(result.findings) > 0
         for f in result.findings:
             assert f.severity_computed is not None
@@ -40,36 +31,56 @@ class TestScanVulnerable:
 
 class TestScanSafe:
     def test_safe_fixtures_clean(self) -> None:
-        result = scan(FIXTURES / "safe", platform="github")
+        result = scan(FIXTURES / "safe", platform="github", patterns_path=MINIMAL_PATTERNS)
         assert result.findings == []
         assert result.exit_code == EXIT_CLEAN
 
 
 class TestScanExitCodes:
     def test_clean_exit(self) -> None:
-        result = scan(FIXTURES / "safe", platform="github")
+        result = scan(FIXTURES / "safe", platform="github", patterns_path=MINIMAL_PATTERNS)
         assert result.exit_code == EXIT_CLEAN
 
     def test_findings_exit(self) -> None:
-        result = scan(FIXTURES / "vulnerable", platform="github")
+        result = scan(FIXTURES / "vulnerable", platform="github", patterns_path=MINIMAL_PATTERNS)
         assert result.exit_code in (EXIT_FINDINGS, EXIT_CRITICAL)
 
     def test_fail_on_info(self) -> None:
-        result = scan(FIXTURES / "vulnerable", platform="github", fail_on="info")
+        result = scan(
+            FIXTURES / "vulnerable",
+            platform="github",
+            patterns_path=MINIMAL_PATTERNS,
+            fail_on="info",
+        )
         assert result.exit_code in (EXIT_FINDINGS, EXIT_CRITICAL)
 
 
 class TestScanOutputFormats:
     def test_json_output(self) -> None:
-        result = scan(FIXTURES / "vulnerable", platform="github", output_format="json")
+        result = scan(
+            FIXTURES / "vulnerable",
+            platform="github",
+            output_format="json",
+            patterns_path=MINIMAL_PATTERNS,
+        )
         assert '"findings"' in result.output_text
 
     def test_yaml_output(self) -> None:
-        result = scan(FIXTURES / "vulnerable", platform="github", output_format="yaml")
+        result = scan(
+            FIXTURES / "vulnerable",
+            platform="github",
+            output_format="yaml",
+            patterns_path=MINIMAL_PATTERNS,
+        )
         assert "findings:" in result.output_text
 
     def test_sarif_output(self) -> None:
-        result = scan(FIXTURES / "vulnerable", platform="github", output_format="sarif")
+        result = scan(
+            FIXTURES / "vulnerable",
+            platform="github",
+            output_format="sarif",
+            patterns_path=MINIMAL_PATTERNS,
+        )
         assert '"version": "2.1.0"' in result.output_text
 
 
@@ -80,13 +91,19 @@ class TestScanSuppression:
             platform="github",
             profile_name="hardened",
             show_suppressed=True,
+            patterns_path=MINIMAL_PATTERNS,
         )
         all_count = len(result.findings) + len(result.suppressed)
         assert all_count > 0
 
     def test_suppressed_excluded_by_default(self) -> None:
-        normal = scan(FIXTURES / "vulnerable", platform="github")
-        hardened = scan(FIXTURES / "vulnerable", platform="github", profile_name="hardened")
+        normal = scan(FIXTURES / "vulnerable", platform="github", patterns_path=MINIMAL_PATTERNS)
+        hardened = scan(
+            FIXTURES / "vulnerable",
+            platform="github",
+            profile_name="hardened",
+            patterns_path=MINIMAL_PATTERNS,
+        )
         assert len(normal.findings) > 0
         assert len(hardened.findings) <= len(normal.findings)
 
@@ -95,6 +112,7 @@ class TestScanSuppression:
             FIXTURES / "vulnerable",
             platform="github",
             profile_name="self-hosted",
+            patterns_path=MINIMAL_PATTERNS,
         )
         elevated = [
             f
@@ -140,6 +158,7 @@ class TestScanOutputFile:
             FIXTURES / "vulnerable",
             platform="github",
             output_file=out,
+            patterns_path=MINIMAL_PATTERNS,
         )
         assert out.exists()
         assert '"findings"' in out.read_text()

@@ -158,6 +158,7 @@ def scan(
         raise click.UsageError("--online and --offline are mutually exclusive.")
 
     from actionsieve.context import ContextError, resolve_context
+    from actionsieve.patterns import PatternError
     from actionsieve.scanner import ChangedSinceError
     from actionsieve.scanner import scan as run_scan
 
@@ -194,6 +195,8 @@ def scan(
             token=token,
         )
     except ChangedSinceError as e:
+        raise click.ClickException(str(e)) from None
+    except PatternError as e:
         raise click.ClickException(str(e)) from None
 
     if not output_file:

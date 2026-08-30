@@ -1,44 +1,80 @@
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 from click.testing import CliRunner
 
 from actionsieve.cli import main
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "github"
+MINIMAL_PATTERNS = str(Path(__file__).parent.parent / "fixtures" / "minimal_patterns")
 
 
 class TestScanCommand:
     def test_scan_vulnerable_finds_issues(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(main, ["scan", str(FIXTURES / "vulnerable")])
+        result = runner.invoke(
+            main, ["scan", "--patterns", MINIMAL_PATTERNS, str(FIXTURES / "vulnerable")]
+        )
         assert result.exit_code != 0
         data = json.loads(result.output)
         assert len(data["findings"]) > 0
 
     def test_scan_safe_clean(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(main, ["scan", str(FIXTURES / "safe")])
+        result = runner.invoke(
+            main, ["scan", "--patterns", MINIMAL_PATTERNS, str(FIXTURES / "safe")]
+        )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["findings"] == []
 
     def test_scan_json_format(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(main, ["scan", "--format", "json", str(FIXTURES / "vulnerable")])
+        result = runner.invoke(
+            main,
+            [
+                "scan",
+                "--format",
+                "json",
+                "--patterns",
+                MINIMAL_PATTERNS,
+                str(FIXTURES / "vulnerable"),
+            ],
+        )
         data = json.loads(result.output)
         assert "findings" in data
 
     def test_scan_yaml_format(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(main, ["scan", "--format", "yaml", str(FIXTURES / "vulnerable")])
+        result = runner.invoke(
+            main,
+            [
+                "scan",
+                "--format",
+                "yaml",
+                "--patterns",
+                MINIMAL_PATTERNS,
+                str(FIXTURES / "vulnerable"),
+            ],
+        )
         data = yaml.safe_load(result.output)
         assert "findings" in data
 
     def test_scan_sarif_format(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(main, ["scan", "--format", "sarif", str(FIXTURES / "vulnerable")])
+        result = runner.invoke(
+            main,
+            [
+                "scan",
+                "--format",
+                "sarif",
+                "--patterns",
+                MINIMAL_PATTERNS,
+                str(FIXTURES / "vulnerable"),
+            ],
+        )
         data = json.loads(result.output)
         assert data["version"] == "2.1.0"
         assert len(data["runs"][0]["results"]) > 0
@@ -46,15 +82,32 @@ class TestScanCommand:
     def test_scan_markdown_format(self) -> None:
         runner = CliRunner()
         result = runner.invoke(
-            main, ["scan", "--format", "markdown", str(FIXTURES / "vulnerable")]
+            main,
+            [
+                "scan",
+                "--format",
+                "markdown",
+                "--patterns",
+                MINIMAL_PATTERNS,
+                str(FIXTURES / "vulnerable"),
+            ],
         )
         assert result.exit_code != 0
         assert "# actionsieve Security Report" in result.output
-        assert "expr-injection-run" in result.output
 
     def test_scan_ocsf_format(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(main, ["scan", "--format", "ocsf", str(FIXTURES / "vulnerable")])
+        result = runner.invoke(
+            main,
+            [
+                "scan",
+                "--format",
+                "ocsf",
+                "--patterns",
+                MINIMAL_PATTERNS,
+                str(FIXTURES / "vulnerable"),
+            ],
+        )
         data = json.loads(result.output)
         assert "detection_findings" in data
         assert len(data["detection_findings"]) > 0
@@ -67,7 +120,16 @@ class TestScanCommand:
         runner = CliRunner()
         runner.invoke(
             main,
-            ["scan", "--format", "markdown", "--output", str(out), str(FIXTURES / "vulnerable")],
+            [
+                "scan",
+                "--format",
+                "markdown",
+                "--output",
+                str(out),
+                "--patterns",
+                MINIMAL_PATTERNS,
+                str(FIXTURES / "vulnerable"),
+            ],
         )
         assert out.exists()
         text = out.read_text()
@@ -76,7 +138,15 @@ class TestScanCommand:
     def test_scan_platform_github(self) -> None:
         runner = CliRunner()
         result = runner.invoke(
-            main, ["scan", "--platform", "github", str(FIXTURES / "vulnerable")]
+            main,
+            [
+                "scan",
+                "--platform",
+                "github",
+                "--patterns",
+                MINIMAL_PATTERNS,
+                str(FIXTURES / "vulnerable"),
+            ],
         )
         data = json.loads(result.output)
         assert len(data["findings"]) > 0
@@ -86,7 +156,14 @@ class TestScanCommand:
         runner = CliRunner()
         runner.invoke(
             main,
-            ["scan", "--output", str(out), str(FIXTURES / "vulnerable")],
+            [
+                "scan",
+                "--output",
+                str(out),
+                "--patterns",
+                MINIMAL_PATTERNS,
+                str(FIXTURES / "vulnerable"),
+            ],
         )
         assert out.exists()
         data = json.loads(out.read_text())
@@ -96,7 +173,14 @@ class TestScanCommand:
         runner = CliRunner()
         result = runner.invoke(
             main,
-            ["scan", "--profile", "hardened", str(FIXTURES / "vulnerable")],
+            [
+                "scan",
+                "--profile",
+                "hardened",
+                "--patterns",
+                MINIMAL_PATTERNS,
+                str(FIXTURES / "vulnerable"),
+            ],
         )
         data = json.loads(result.output)
         assert "findings" in data
@@ -105,7 +189,14 @@ class TestScanCommand:
         runner = CliRunner()
         result = runner.invoke(
             main,
-            ["scan", "--fail-on", "info", str(FIXTURES / "vulnerable")],
+            [
+                "scan",
+                "--fail-on",
+                "info",
+                "--patterns",
+                MINIMAL_PATTERNS,
+                str(FIXTURES / "vulnerable"),
+            ],
         )
         assert result.exit_code != 0
 
@@ -118,6 +209,8 @@ class TestScanCommand:
                 "--profile",
                 "hardened",
                 "--show-suppressed",
+                "--patterns",
+                MINIMAL_PATTERNS,
                 str(FIXTURES / "vulnerable"),
             ],
         )
@@ -129,245 +222,19 @@ class TestScanCommand:
         result = runner.invoke(main, ["scan", str(tmp_path)])
         assert result.exit_code == 0
 
-
-class TestScanFindings:
-    def test_expression_injection_detected(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+    def test_no_patterns_errors(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("ACTIONSIEVE_PATTERNS", raising=False)
+        repo = tmp_path / "repo"
+        wf_dir = repo / ".github" / "workflows"
+        wf_dir.mkdir(parents=True)
+        (wf_dir / "ci.yml").write_text(
+            "on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n"
         )
-        data = json.loads(result.output)
-        ids = [f["pattern_id"] for f in data["findings"]]
-        assert "expr-injection-run" in ids
-
-    def test_unpinned_refs_detected(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        ids = [f["pattern_id"] for f in data["findings"]]
-        assert "mutable-action-ref" in ids
-
-    def test_sarif_has_cwe(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--format", "sarif", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        results_with_cwe = [r for r in data["runs"][0]["results"] if "taxa" in r]
-        assert len(results_with_cwe) > 0
-
-
-class TestChainDetectionFindings:
-    def test_fork_script_output_detected(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        ids = [f["pattern_id"] for f in data["findings"]]
-        assert "fork-script-output-injection" in ids
-
-    def test_fs_to_matrix_detected(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        ids = [f["pattern_id"] for f in data["findings"]]
-        assert "fs-to-matrix-injection" in ids
-
-    def test_safe_chain_not_detected(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "safe")],
-        )
-        data = json.loads(result.output)
-        chain_findings = [
-            f
-            for f in data["findings"]
-            if f["pattern_id"] in ("fork-script-output-injection", "fs-to-matrix-injection")
-        ]
-        assert len(chain_findings) == 0
-
-
-class TestHardeningFindings:
-    def test_missing_permissions_detected(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        ids = [f["pattern_id"] for f in data["findings"]]
-        assert "missing-permissions-block" in ids
-
-    def test_checkout_persists_credentials_detected(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        ids = [f["pattern_id"] for f in data["findings"]]
-        assert "checkout-persists-credentials" in ids
-
-    def test_safe_fixtures_no_hardening_findings(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "safe")],
-        )
-        data = json.loads(result.output)
-        hardening = [
-            f
-            for f in data["findings"]
-            if f["pattern_id"] in ("missing-permissions-block", "checkout-persists-credentials")
-        ]
-        assert len(hardening) == 0
-
-
-class TestPipeToShellFindings:
-    def test_pipe_to_shell_detected(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        ids = [f["pattern_id"] for f in data["findings"]]
-        assert "pipe-to-shell" in ids
-
-    def test_safe_download_not_flagged(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "safe")],
-        )
-        data = json.loads(result.output)
-        pipe_findings = [f for f in data["findings"] if f["pattern_id"] == "pipe-to-shell"]
-        assert len(pipe_findings) == 0
-
-
-class TestCloudCredentialFindings:
-    def test_static_creds_detected(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        ids = [f["pattern_id"] for f in data["findings"]]
-        assert "static-cloud-credentials" in ids
-
-    def test_oidc_not_flagged(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "safe")],
-        )
-        data = json.loads(result.output)
-        cred_findings = [
-            f for f in data["findings"] if f["pattern_id"] == "static-cloud-credentials"
-        ]
-        assert len(cred_findings) == 0
-
-
-class TestDockerInDockerFindings:
-    def test_docker_commands_detected(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        ids = [f["pattern_id"] for f in data["findings"]]
-        assert "docker-in-docker" in ids
-
-    def test_build_action_not_flagged(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "safe")],
-        )
-        data = json.loads(result.output)
-        dind_findings = [f for f in data["findings"] if f["pattern_id"] == "docker-in-docker"]
-        assert len(dind_findings) == 0
-
-
-class TestContainerImageFindings:
-    def test_unpinned_container_detected(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        ids = [f["pattern_id"] for f in data["findings"]]
-        assert "unpinned-container-image" in ids
-
-    def test_pinned_container_not_flagged(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "safe")],
-        )
-        data = json.loads(result.output)
-        img_findings = [
-            f for f in data["findings"] if f["pattern_id"] == "unpinned-container-image"
-        ]
-        assert len(img_findings) == 0
-
-
-class TestForkCacheWriteFindings:
-    def test_fork_cache_write_detected(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        ids = [f["pattern_id"] for f in data["findings"]]
-        assert "fork-pr-cache-write" in ids
-
-    def test_push_only_cache_not_flagged(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "safe")],
-        )
-        data = json.loads(result.output)
-        cache_findings = [f for f in data["findings"] if f["pattern_id"] == "fork-pr-cache-write"]
-        assert len(cache_findings) == 0
-
-
-class TestIssueCommentForkCheckout:
-    def test_issue_comment_fork_checkout_detected(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        ids = [f["pattern_id"] for f in data["findings"]]
-        assert "issue-comment-fork-checkout" in ids
-
-    def test_safe_issue_comment_not_flagged(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "safe")],
-        )
-        data = json.loads(result.output)
-        ic = [f for f in data["findings"] if f["pattern_id"] == "issue-comment-fork-checkout"]
-        assert len(ic) == 0
+        result = runner.invoke(main, ["scan", str(repo)])
+        assert result.exit_code != 0
+        error_text = result.output or str(result.exception)
+        assert "No patterns path" in error_text or "ACTIONSIEVE_PATTERNS" in error_text
 
 
 class TestTrustRepoProfile:
@@ -390,7 +257,7 @@ jobs:
             """\
 profile:
   suppress:
-    - expr-injection
+    - test-expr-injection
 """
         )
         return tmp_path
@@ -398,41 +265,46 @@ profile:
     def test_repo_profile_ignored_by_default(self, tmp_path: Path) -> None:
         repo = self._make_repo(tmp_path)
         runner = CliRunner()
-        result = runner.invoke(main, ["scan", str(repo)])
+        result = runner.invoke(main, ["scan", "--patterns", MINIMAL_PATTERNS, str(repo)])
         data = json.loads(result.output)
         ids = [f["pattern_id"] for f in data["findings"]]
-        assert "expr-injection-run" in ids
+        assert "test-expr-injection" in ids
 
     def test_repo_profile_loaded_with_flag(self, tmp_path: Path) -> None:
         repo = self._make_repo(tmp_path)
         runner = CliRunner()
-        result = runner.invoke(main, ["scan", "--trust-repo-profile", str(repo)])
+        result = runner.invoke(
+            main, ["scan", "--patterns", MINIMAL_PATTERNS, "--trust-repo-profile", str(repo)]
+        )
         data = json.loads(result.output)
         ids = [f["pattern_id"] for f in data["findings"]]
-        assert "expr-injection-run" not in ids
+        assert "test-expr-injection" not in ids
 
 
 class TestExplainCommand:
     def test_explain_known_pattern(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(main, ["explain", "expr-injection-run"])
+        result = runner.invoke(
+            main, ["explain", "--patterns", MINIMAL_PATTERNS, "test-expr-injection"]
+        )
         assert result.exit_code == 0
-        assert "Expression injection" in result.output
-        assert "Mitigations:" in result.output
+        assert "Test expression injection" in result.output
         assert "CWE-78" in result.output
 
     def test_explain_unknown_pattern(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(main, ["explain", "nonexistent-pattern"])
+        result = runner.invoke(
+            main, ["explain", "--patterns", MINIMAL_PATTERNS, "nonexistent-pattern"]
+        )
         assert result.exit_code == 1
         assert "Unknown pattern" in result.output
 
     def test_explain_fuzzy_match(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(main, ["explain", "injection"])
+        result = runner.invoke(main, ["explain", "--patterns", MINIMAL_PATTERNS, "injection"])
         assert result.exit_code == 1
         assert "Did you mean:" in result.output
-        assert "expr-injection-run" in result.output
+        assert "test-expr-injection" in result.output
 
 
 class TestProfileResolve:
@@ -526,47 +398,9 @@ class TestOnlineFlag:
         runner = CliRunner()
         result = runner.invoke(
             main,
-            ["scan", "--offline", str(FIXTURES / "safe")],
+            ["scan", "--offline", "--patterns", MINIMAL_PATTERNS, str(FIXTURES / "safe")],
         )
         assert result.exit_code == 0
-
-
-class TestCompositeChainFindings:
-    def test_nested_composite_injection_detected(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        chain_findings = [
-            f
-            for f in data["findings"]
-            if f["pattern_id"] == "expr-injection-run" and "composite-chain" in f["file_path"]
-        ]
-        assert len(chain_findings) >= 1
-
-    def test_standalone_action_injection_detected(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        standalone_findings = [f for f in data["findings"] if "standalone-vuln" in f["file_path"]]
-        assert len(standalone_findings) >= 1
-
-    def test_resolved_composites_not_duplicated(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
-        )
-        data = json.loads(result.output)
-        action_b_findings = [
-            f for f in data["findings"] if "action-b/action.yml" in f["file_path"]
-        ]
-        assert len(action_b_findings) == 0
 
 
 class TestVersionFlag:

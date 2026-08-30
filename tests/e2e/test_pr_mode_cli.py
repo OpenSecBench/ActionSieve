@@ -20,7 +20,8 @@ jobs:
           echo "PR title: ${{ github.event.pull_request.title }}"
 """
 
-SCAN_ARGS = ["scan", "--format", "json"]
+MINIMAL_PATTERNS = str(Path(__file__).parent.parent / "fixtures" / "minimal_patterns")
+SCAN_ARGS = ["scan", "--format", "json", "--patterns", MINIMAL_PATTERNS]
 
 
 def _make_repo(tmp_path: Path) -> Path:

@@ -33,7 +33,8 @@ jobs:
       - run: echo "hello"
 """
 
-SCAN_ARGS = ["scan", "--format", "json"]
+MINIMAL_PATTERNS = str(Path(__file__).parent.parent / "fixtures" / "minimal_patterns")
+SCAN_ARGS = ["scan", "--format", "json", "--patterns", MINIMAL_PATTERNS]
 
 
 def _git(repo: Path, *args: str) -> None:
