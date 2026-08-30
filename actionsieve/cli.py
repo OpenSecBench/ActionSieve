@@ -80,11 +80,10 @@ def main() -> None:
     help="Include profile-suppressed findings in output.",
 )
 @click.option(
-    "--diff",
-    "diff_base",
+    "--changed-since",
     type=str,
     default=None,
-    help="Only scan pipeline files changed since this ref.",
+    help="Only scan pipeline files changed since this git ref.",
 )
 @click.option(
     "--offline",
@@ -113,7 +112,7 @@ def scan(
     trust_repo_profile: bool,
     fail_on: str | None,
     show_suppressed: bool,
-    diff_base: str | None,
+    changed_since: str | None,
     offline: bool,
     online: bool,
     token: str | None,
@@ -122,23 +121,27 @@ def scan(
     if online and offline:
         raise click.UsageError("--online and --offline are mutually exclusive.")
 
+    from actionsieve.scanner import ChangedSinceError
     from actionsieve.scanner import scan as run_scan
 
-    result = run_scan(
-        repo_path=path,
-        platform=platform,
-        output_format=output_format,
-        output_file=output_file,
-        patterns_path=patterns,
-        profile_name=profile,
-        trust_repo_profile=trust_repo_profile,
-        fail_on=fail_on,
-        show_suppressed=show_suppressed,
-        diff_base=diff_base,
-        offline=offline,
-        online=online,
-        token=token,
-    )
+    try:
+        result = run_scan(
+            repo_path=path,
+            platform=platform,
+            output_format=output_format,
+            output_file=output_file,
+            patterns_path=patterns,
+            profile_name=profile,
+            trust_repo_profile=trust_repo_profile,
+            fail_on=fail_on,
+            show_suppressed=show_suppressed,
+            changed_since=changed_since,
+            offline=offline,
+            online=online,
+            token=token,
+        )
+    except ChangedSinceError as e:
+        raise click.ClickException(str(e)) from None
 
     if not output_file:
         click.echo(result.output_text)

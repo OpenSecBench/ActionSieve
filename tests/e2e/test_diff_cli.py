@@ -33,6 +33,8 @@ jobs:
       - run: echo "hello"
 """
 
+SCAN_ARGS = ["scan", "--format", "json"]
+
 
 def _git(repo: Path, *args: str) -> None:
     subprocess.run(  # noqa: S603
@@ -60,8 +62,8 @@ def _init_repo(tmp_path: Path) -> Path:
     return repo
 
 
-class TestDiffMode:
-    def test_diff_only_scans_changed_files(self, tmp_path: Path) -> None:
+class TestChangedSince:
+    def test_only_scans_changed_files(self, tmp_path: Path) -> None:
         repo = _init_repo(tmp_path)
         wf_dir = repo / ".github" / "workflows"
 
@@ -70,24 +72,24 @@ class TestDiffMode:
         _git(repo, "commit", "-m", "add vuln")
 
         runner = CliRunner()
-        result = runner.invoke(main, ["scan", "--diff", "baseline", "--format", "json", str(repo)])
+        result = runner.invoke(main, [*SCAN_ARGS, "--changed-since", "baseline", str(repo)])
 
         data = json.loads(result.output)
         files = {f["file_path"] for f in data["findings"]}
         assert any("vuln.yml" in f for f in files)
         assert not any("safe.yml" in f for f in files)
 
-    def test_diff_no_changes_returns_clean(self, tmp_path: Path) -> None:
+    def test_no_changes_returns_clean(self, tmp_path: Path) -> None:
         repo = _init_repo(tmp_path)
 
         runner = CliRunner()
-        result = runner.invoke(main, ["scan", "--diff", "baseline", "--format", "json", str(repo)])
+        result = runner.invoke(main, [*SCAN_ARGS, "--changed-since", "baseline", str(repo)])
 
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["findings"] == []
 
-    def test_diff_modified_file_scanned(self, tmp_path: Path) -> None:
+    def test_modified_file_scanned(self, tmp_path: Path) -> None:
         repo = _init_repo(tmp_path)
         wf_dir = repo / ".github" / "workflows"
 
@@ -96,19 +98,31 @@ class TestDiffMode:
         _git(repo, "commit", "-m", "make it vulnerable")
 
         runner = CliRunner()
-        result = runner.invoke(main, ["scan", "--diff", "baseline", "--format", "json", str(repo)])
+        result = runner.invoke(main, [*SCAN_ARGS, "--changed-since", "baseline", str(repo)])
 
         data = json.loads(result.output)
         assert len(data["findings"]) > 0
 
-    def test_diff_without_git_scans_everything(self, tmp_path: Path) -> None:
+    def test_not_a_repo_errors(self, tmp_path: Path) -> None:
         repo = tmp_path / "no-git"
         wf_dir = repo / ".github" / "workflows"
         wf_dir.mkdir(parents=True)
         (wf_dir / "vuln.yml").write_text(VULN_WORKFLOW)
 
         runner = CliRunner()
-        result = runner.invoke(main, ["scan", "--diff", "HEAD~1", "--format", "json", str(repo)])
+        result = runner.invoke(main, [*SCAN_ARGS, "--changed-since", "HEAD~1", str(repo)])
 
-        data = json.loads(result.output)
-        assert len(data["findings"]) > 0
+        assert result.exit_code != 0
+        assert "git diff failed" in result.output
+
+    def test_bad_ref_errors(self, tmp_path: Path) -> None:
+        repo = _init_repo(tmp_path)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [*SCAN_ARGS, "--changed-since", "nonexistent-ref", str(repo)],
+        )
+
+        assert result.exit_code != 0
+        assert "git diff failed" in result.output

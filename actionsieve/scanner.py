@@ -54,7 +54,7 @@ def scan(
     trust_repo_profile: bool = False,
     fail_on: str | None = None,
     show_suppressed: bool = False,
-    diff_base: str | None = None,
+    changed_since: str | None = None,
     offline: bool = False,
     online: bool = False,
     token: str | None = None,
@@ -79,8 +79,8 @@ def scan(
         patterns = load_patterns(patterns_path, platform=provider.name)
         files = provider.find_files(repo_path)
 
-        if diff_base:
-            files = _filter_changed_files(repo_path, files, diff_base)
+        if changed_since:
+            files = _filter_changed_files(repo_path, files, changed_since)
 
         resolved_actions: set[str] = set()
         for file_path in files:
@@ -100,8 +100,8 @@ def scan(
 
         if hasattr(provider, "find_action_files"):
             action_files = provider.find_action_files(repo_path)
-            if diff_base:
-                action_files = _filter_changed_files(repo_path, action_files, diff_base)
+            if changed_since:
+                action_files = _filter_changed_files(repo_path, action_files, changed_since)
             for file_path in action_files:
                 if str(file_path.parent.resolve()) in resolved_actions:
                     continue
@@ -151,24 +151,31 @@ def scan(
     )
 
 
+class ChangedSinceError(Exception):
+    pass
+
+
 def _filter_changed_files(
     repo_path: Path,
     files: list[Path],
-    diff_base: str,
+    ref: str,
 ) -> list[Path]:
     try:
         result = subprocess.run(  # noqa: S603
-            ["git", "diff", "--name-only", "--diff-filter=ACMR", diff_base],  # noqa: S607
+            ["git", "diff", "--name-only", "--diff-filter=ACMR", ref],  # noqa: S607
             capture_output=True,
             text=True,
             cwd=repo_path,
             check=False,
         )
     except FileNotFoundError:
-        return files
+        msg = "--changed-since requires git, but git was not found."
+        raise ChangedSinceError(msg) from None
 
     if result.returncode != 0:
-        return files
+        stderr = result.stderr.strip()
+        msg = f"--changed-since: git diff failed for ref '{ref}': {stderr}"
+        raise ChangedSinceError(msg)
 
     changed = set(result.stdout.strip().splitlines())
     return [f for f in files if _relative_path(f, repo_path) in changed]

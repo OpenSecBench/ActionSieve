@@ -226,6 +226,66 @@
 - [x] Static cloud credentials detection — flag long-lived AWS access keys (`AWS_ACCESS_KEY_ID`), GCP service account JSON, Azure client secrets in env/secrets when OIDC federation is available (`aws-actions/configure-aws-credentials` with `role-to-assume`, `google-github-actions/auth` with `workload_identity_provider`). OIDC is the secure path; static keys are a secret exposure risk. New pattern file `patterns/cloud-credentials.yml`.
 - [x] Cache poisoning detection — flag CI cache writes (`actions/cache`, `save_cache`, `cache:` directives) in workflows reachable from fork PRs. Attacker-controlled fork can poison the cache with malicious build artifacts or dependencies that persist into trusted branch builds. Structural matcher: cache save step + fork-reachable trigger.
 
+## Phase 8: Diff-aware scanning (PR mode)
+
+Full spec + design decisions: `../actionsieve-corpus/bugs/diff-aware-scanning.md`
+
+### Step 1: Rename `--diff` to `--changed-since`
+- [x] Rename CLI option `--diff` → `--changed-since` in `cli.py`
+- [x] Remove `--diff` (no external consumers)
+- [x] Rename `diff_base` parameter through `scanner.py`
+- [x] Fix silent fallback: error when git unavailable or ref invalid (not scan everything)
+- [x] Update E2E tests referencing `--diff`
+- [x] Tests for error cases (bad ref, not a repo)
+
+### Step 2: Pattern schema changes
+- [ ] Add optional `diff_scope` (`always` | `changeset`) to `patterns/schema.json`
+- [ ] Add optional `diff_effect` (`suppress` | `elevate`) to `patterns/schema.json`
+- [ ] Add optional `reachable_files` (array of glob strings) to `patterns/schema.json`
+- [ ] Conditional validation: `diff_scope: changeset` requires `reachable_files` + `diff_effect`
+- [ ] Schema validation tests
+
+### Step 3: Context module
+- [ ] `context.py` — `ScanContext` dataclass (changed_files, trigger, actor, mode)
+- [ ] `--changed-files` parsing: comma-separated inline, or read from file/stdin if value is `-` or a file path
+- [ ] CI auto-detection: GitHub Actions (`GITHUB_EVENT_NAME`, `GITHUB_BASE_REF`)
+- [ ] CI auto-detection: GitLab CI (`CI_PIPELINE_SOURCE`, `CI_MERGE_REQUEST_DIFF_BASE_SHA`)
+- [ ] CI auto-detection: Azure Pipelines (`BUILD_REASON`, `SYSTEM_PULLREQUEST_TARGETBRANCH`)
+- [ ] CI auto-detection: Jenkins, CircleCI, Bitbucket, Buildkite, Drone
+- [ ] `detect_ci_context()` — try each platform, return `ScanContext` or `None`
+- [ ] `--context` file parsing (YAML dict with same fields)
+- [ ] Precedence: explicit flags > context file > auto-detected > None (static mode)
+- [ ] Changed files derived via `git diff --name-only` against detected base ref
+- [ ] Unit tests with mocked env vars for each platform
+
+### Step 4: CLI flags
+- [ ] `--changed-files` option in `cli.py`
+- [ ] `--trigger` option in `cli.py`
+- [ ] `--actor` option in `cli.py`
+- [ ] `--context` option in `cli.py` (path to YAML context file)
+- [ ] `--mode` option (`static` | `pr`) — force override, default auto
+- [ ] Wire flags into `scanner.scan()` via `ScanContext`
+- [ ] Conflict handling: `--changed-since` ignored with warning in PR mode
+- [ ] E2E tests for new flags
+
+### Step 5: Scanner/engine integration
+- [ ] `scanner.scan()` accepts `ScanContext`
+- [ ] In PR mode, scan all pipeline files (ignore `--changed-since`)
+- [ ] After matching, apply changeset suppression: `diff_scope: changeset` + `diff_effect: suppress` + no reachable file in changeset → suppress with `suppressed_by: changeset`
+- [ ] After matching, apply changeset elevation: `diff_scope: changeset` + `diff_effect: elevate` + reachable file in changeset → bump severity one level
+- [ ] Glob matching for `reachable_files` against changed-files list (repo-root-relative)
+- [ ] `--show-suppressed` includes changeset-suppressed findings
+- [ ] Exit code based on unsuppressed findings only (consistent with profile suppression)
+- [ ] Coverage note in output when pipeline file count seems low
+- [ ] Unit tests: suppress path, elevate path, always-fire path
+- [ ] Unit tests: exit code with mixed suppressed/unsuppressed findings
+
+### Step 6: Annotate pattern catalog
+- [ ] Review every pattern, assign `diff_scope` (`always` or `changeset`)
+- [ ] For `changeset` patterns: add `diff_effect` and `reachable_files` with narrow globs
+- [ ] Validate all patterns still load and pass schema
+- [ ] Test annotated patterns against existing fixtures (no regressions)
+
 ## Ongoing
 
 - [ ] Keep pattern catalog updated as new attack patterns are discovered

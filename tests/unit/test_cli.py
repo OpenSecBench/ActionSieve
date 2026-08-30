@@ -23,7 +23,7 @@ class TestCLI:
         assert result.exit_code == 0
         assert "--platform" in result.output
         assert "--format" in result.output
-        assert "--diff" in result.output
+        assert "--changed-since" in result.output
         assert "--profile" in result.output
         assert "--fail-on" in result.output
 
