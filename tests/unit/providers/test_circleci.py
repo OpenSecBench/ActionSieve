@@ -281,6 +281,107 @@ workflows:
         assert "schedule" in events
 
 
+class TestContexts:
+    def test_contexts_populate_secrets(self, provider: CircleCIProvider, tmp_path: Path) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+version: 2.1
+jobs:
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: deploy.sh
+workflows:
+  main:
+    jobs:
+      - deploy:
+          context:
+            - org-global
+            - deploy-secrets
+""",
+        )
+        wf = provider.parse(p)
+        assert wf.jobs[0].secrets_referenced == ["org-global", "deploy-secrets"]
+
+    def test_no_context_empty_secrets(self, provider: CircleCIProvider, tmp_path: Path) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+version: 2.1
+jobs:
+  build:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: npm test
+workflows:
+  main:
+    jobs:
+      - build
+""",
+        )
+        wf = provider.parse(p)
+        assert wf.jobs[0].secrets_referenced == []
+
+    def test_string_context(self, provider: CircleCIProvider, tmp_path: Path) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+version: 2.1
+jobs:
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: deploy.sh
+workflows:
+  main:
+    jobs:
+      - deploy:
+          context: org-global
+""",
+        )
+        wf = provider.parse(p)
+        assert wf.jobs[0].secrets_referenced == ["org-global"]
+
+
+class TestDynamicConfig:
+    def test_setup_true_detected(self, provider: CircleCIProvider, tmp_path: Path) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+version: 2.1
+setup: true
+jobs:
+  generate:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: python gen.py
+""",
+        )
+        wf = provider.parse(p)
+        assert wf.raw.get("setup") is True
+
+    def test_no_setup_flag(self, provider: CircleCIProvider, tmp_path: Path) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+version: 2.1
+jobs:
+  build:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: npm test
+""",
+        )
+        wf = provider.parse(p)
+        assert wf.raw.get("setup") is None
+
+
 class TestOrbCommandStep:
     def test_orb_command_in_steps(self, provider: CircleCIProvider, tmp_path: Path) -> None:
         p = _write_config(

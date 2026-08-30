@@ -42,6 +42,17 @@ class TestCircleCIScan:
         ids = [f["pattern_id"] for f in data["findings"]]
         assert any("injection" in pid for pid in ids)
 
+    def test_context_exposed_detected(self) -> None:
+        data = _scan(["scan", "--platform", "circleci", VULN])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "circleci-context-exposed" in ids
+
+    def test_dynamic_config_detected(self) -> None:
+        dynamic = str(FIXTURES / "vulnerable-dynamic")
+        data = _scan(["scan", "--platform", "circleci", dynamic])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "circleci-dynamic-config" in ids
+
     def test_sarif_output(self) -> None:
         result = CliRunner().invoke(
             main,

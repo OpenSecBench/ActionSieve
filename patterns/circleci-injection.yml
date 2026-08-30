@@ -68,3 +68,64 @@ patterns:
     cwe: CWE-78
     tags: [injection, circleci, pipeline-parameter]
     status: active
+
+  - id: circleci-context-exposed
+    title: CircleCI context available to fork PR builds
+    description: |
+      A job references a CircleCI context (shared secrets) and is
+      reachable from fork PR builds. If fork builds are enabled and
+      context restrictions are not configured, a fork PR author can
+      access the context's secrets.
+    platforms: [circleci]
+    trigger: [pull_request]
+    trust_boundary: fork_pr_execution -> context_secrets
+    attacker_model: fork_pr
+    impact: [secret_exfil]
+    severity_base: high
+    requires_self_hosted: false
+    severity_notes: |
+      CircleCI disables fork PR builds by default. Even when enabled,
+      secrets are not passed unless "Pass secrets to builds from forked
+      pull requests" is checked. Context restrictions can limit which
+      projects access a context. Severity depends on org configuration.
+    detection:
+      type: structural
+      grep_patterns:
+        - 'context:'
+      checks:
+        - job_has_secrets: true
+        - fork_reachable: true
+    mitigations:
+      - Disable fork PR builds unless required
+      - Do not enable "Pass secrets to builds from forked pull requests"
+      - Use context restrictions to limit access to specific projects/branches
+      - Use separate contexts for CI vs deploy secrets
+    cwe: CWE-200
+    tags: [secrets, circleci, context, fork]
+    status: active
+
+  - id: circleci-dynamic-config
+    title: Dynamic config limits static analysis coverage
+    description: |
+      This config uses setup: true with the continuation orb to
+      generate the actual pipeline config at runtime. The generated
+      config cannot be analyzed statically — vulnerabilities in
+      dynamically generated steps will not be detected.
+    platforms: [circleci]
+    attacker_model: any
+    impact: [info_disclosure]
+    severity_base: info
+    requires_self_hosted: false
+    severity_notes: |
+      Not a vulnerability itself. Flags a gap in static analysis
+      coverage. The generated config should be reviewed manually or
+      captured and scanned separately.
+    detection:
+      type: structural
+      grep_patterns:
+        - 'setup: true'
+    mitigations:
+      - Capture generated config and scan it separately
+      - Review continuation orb usage for injection risks
+    tags: [circleci, dynamic-config, coverage-gap]
+    status: active

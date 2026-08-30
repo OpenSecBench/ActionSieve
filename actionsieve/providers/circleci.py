@@ -76,6 +76,7 @@ class CircleCIProvider:
         orbs = parse_orbs(raw, lines)
         jobs = _parse_jobs(raw, executors, orbs, lines)
         triggers = _parse_triggers(raw)
+        _apply_contexts(raw, jobs)
 
         return WorkflowModel(
             platform="circleci",
@@ -266,3 +267,34 @@ def _parse_triggers(raw: dict[str, Any]) -> list[Trigger]:
     )
 
     return triggers
+
+
+def _apply_contexts(raw: dict[str, Any], jobs: list[Job]) -> None:
+    workflows = raw.get("workflows", {})
+    if not isinstance(workflows, dict):
+        return
+
+    job_contexts: dict[str, list[str]] = {}
+    for wf_data in workflows.values():
+        if not isinstance(wf_data, dict):
+            continue
+        wf_jobs = wf_data.get("jobs", [])
+        if not isinstance(wf_jobs, list):
+            continue
+        for entry in wf_jobs:
+            if isinstance(entry, str):
+                continue
+            if isinstance(entry, dict):
+                for job_name, config in entry.items():
+                    if not isinstance(config, dict):
+                        continue
+                    ctx = config.get("context")
+                    if isinstance(ctx, list):
+                        job_contexts.setdefault(str(job_name), []).extend(str(c) for c in ctx)
+                    elif isinstance(ctx, str):
+                        job_contexts.setdefault(str(job_name), []).append(ctx)
+
+    for job in jobs:
+        contexts = job_contexts.get(job.id, [])
+        if contexts:
+            job.secrets_referenced = contexts

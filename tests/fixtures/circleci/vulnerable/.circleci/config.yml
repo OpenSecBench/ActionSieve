@@ -32,7 +32,10 @@ jobs:
 workflows:
   main:
     jobs:
-      - build
+      - build:
+          context:
+            - org-global
+            - deploy-secrets
       - notify:
           requires:
             - build

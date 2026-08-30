@@ -1,0 +1,18 @@
+version: 2.1
+
+setup: true
+
+orbs:
+  continuation: circleci/continuation@1
+
+jobs:
+  generate-config:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          name: Generate pipeline
+          command: python generate_config.py > generated.yml
+      - continuation/continue:
+          configuration_path: generated.yml

@@ -27,6 +27,7 @@ def match_structural(
         "actions-cache-poisoning": _match_cache_poisoning,
         "workflow-run-artifact-trust": _match_workflow_run_artifacts,
         "artifact-supply-chain": _match_artifact_supply_chain,
+        "circleci-dynamic-config": _match_circleci_dynamic_config,
     }
 
     matcher = dispatch.get(pid)
@@ -209,6 +210,25 @@ def _match_artifact_supply_chain(
                     )
                 )
     return findings
+
+
+def _match_circleci_dynamic_config(
+    model: WorkflowModel,
+    pattern: dict[str, Any],
+    make_finding: MakeFinding,
+) -> list[Finding]:
+    if model.raw.get("setup") is not True or not model.jobs:
+        return []
+    return [
+        make_finding(
+            pattern=pattern,
+            model=model,
+            job=model.jobs[0],
+            step=None,
+            evidence=["setup: true — dynamic config, generated pipeline not analyzable"],
+            line=0,
+        )
+    ]
 
 
 def _match_structural_checks(
