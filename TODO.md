@@ -105,18 +105,18 @@
 
 ## Phase 2: Component inventory + supply chain
 
-- [ ] `inventory.py` — parse all `uses:` refs from WorkflowModel
-- [ ] `inventory.py` — classify ref type (sha, tag, branch)
-- [ ] `inventory.py` — detect first-party (actions/*, github/*)
+- [x] `inventory.py` — parse all `uses:` refs from WorkflowModel
+- [x] `inventory.py` — classify ref type (sha, tag, branch)
+- [x] `inventory.py` — detect first-party (actions/*, github/*)
 - [ ] `inventory.py` — recursive composite action resolution
-- [ ] `advisories.py` — load advisory database (abom-advisories YAML format)
-- [ ] `advisories.py` — match components against advisories
-- [ ] `trust.py` — trust score computation (ref type, owner, advisory, popularity)
-- [ ] `cli.py` — `actionsieve inventory <path>` command
-- [ ] `cli.py` — `actionsieve inventory --check <path>` command
-- [ ] `output.py` — CycloneDX SBOM output
-- [ ] Unit tests for inventory, advisories, trust
-- [ ] E2E tests for inventory commands
+- [x] `advisories.py` — load advisory database (abom-advisories YAML format)
+- [x] `advisories.py` — match components against advisories
+- [x] `trust.py` — trust score computation (ref type, owner, advisory, popularity)
+- [x] `cli.py` — `actionsieve inventory <path>` command
+- [x] `cli.py` — `actionsieve inventory --check <path>` command
+- [x] `output.py` — CycloneDX SBOM output
+- [x] Unit tests for inventory, advisories, trust
+- [x] E2E tests for inventory commands
 
 ## Phase 3: Chain detection
 
