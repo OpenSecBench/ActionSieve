@@ -4,6 +4,7 @@ from actionsieve.scanner import (
     EXIT_CLEAN,
     EXIT_CRITICAL,
     EXIT_FINDINGS,
+    _coverage_notes,
     scan,
 )
 
@@ -108,6 +109,28 @@ class TestScanNoProvider:
         result = scan(tmp_path)
         assert result.exit_code == EXIT_CLEAN
         assert result.findings == []
+
+
+class TestCoverageNotes:
+    def test_no_files_warns(self) -> None:
+        notes = _coverage_notes(0, 1)
+        assert len(notes) == 1
+        assert "No pipeline files found" in notes[0]
+
+    def test_single_file_single_provider_warns(self) -> None:
+        notes = _coverage_notes(1, 1)
+        assert len(notes) == 1
+        assert "coverage may be incomplete" in notes[0]
+
+    def test_multiple_files_no_note(self) -> None:
+        assert _coverage_notes(2, 1) == []
+
+    def test_single_file_multiple_providers_no_note(self) -> None:
+        assert _coverage_notes(1, 2) == []
+
+    def test_notes_in_scan_result(self, tmp_path: Path) -> None:
+        result = scan(tmp_path)
+        assert "No pipeline files found" in result.notes[0]
 
 
 class TestScanOutputFile:

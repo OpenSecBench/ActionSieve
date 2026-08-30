@@ -2,6 +2,10 @@
 
 **Scan date**: {{ scan_date }}
 **Findings**: {{ total }} ({{ summary }})
+{% if notes %}
+
+> **Note**: {% for n in notes %}{{ n }}{% if not loop.last %} {% endif %}{% endfor %}
+{% endif %}
 {% if findings %}
 
 ---

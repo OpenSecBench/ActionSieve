@@ -199,6 +199,10 @@ def scan(
     if not output_file:
         click.echo(result.output_text)
 
+    if output_file:
+        for note in result.notes:
+            click.echo(f"Note: {note}", err=True)
+
     raise SystemExit(result.exit_code)
 
 

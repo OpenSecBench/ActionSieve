@@ -276,7 +276,7 @@ Full spec + design decisions: `../actionsieve-corpus/bugs/diff-aware-scanning.md
 - [x] Glob matching for `reachable_files` against changed-files list (repo-root-relative)
 - [x] `--show-suppressed` includes changeset-suppressed findings
 - [x] Exit code based on unsuppressed findings only (consistent with profile suppression)
-- [ ] Coverage note in output when pipeline file count seems low
+- [x] Coverage note in output when pipeline file count seems low
 - [x] Unit tests: suppress path, elevate path, always-fire path
 - [x] Unit tests: exit code with mixed suppressed/unsuppressed findings
 

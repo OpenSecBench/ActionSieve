@@ -5,7 +5,7 @@ from __future__ import annotations
 import fnmatch
 import re
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import yaml
@@ -44,6 +44,7 @@ class ScanResult:
     suppressed: list[Finding]
     exit_code: int
     output_text: str
+    notes: list[str] = field(default_factory=list)
 
 
 def scan(
@@ -65,11 +66,13 @@ def scan(
     providers = [get_provider(platform)] if platform else auto_detect(repo_path)
 
     if not providers:
+        notes = _coverage_notes(0, 0)
         return ScanResult(
             findings=[],
             suppressed=[],
             exit_code=EXIT_CLEAN,
-            output_text=render([], output_format, output_file),
+            output_text=render([], output_format, output_file, notes=notes),
+            notes=notes,
         )
 
     repo_profile = (repo_path / ".actionsieve.yml") if trust_repo_profile else None
@@ -77,6 +80,7 @@ def scan(
 
     all_findings: list[Finding] = []
     models: list[WorkflowModel] = []
+    total_files = 0
 
     for provider in providers:
         patterns = load_patterns(patterns_path, platform=provider.name)
@@ -84,6 +88,8 @@ def scan(
 
         if changed_since:
             files = _filter_changed_files(repo_path, files, changed_since)
+
+        total_files += len(files)
 
         resolved_actions: set[str] = set()
         for file_path in files:
@@ -105,6 +111,7 @@ def scan(
             action_files = provider.find_action_files(repo_path)
             if changed_since:
                 action_files = _filter_changed_files(repo_path, action_files, changed_since)
+            total_files += len(action_files)
             for file_path in action_files:
                 if str(file_path.parent.resolve()) in resolved_actions:
                     continue
@@ -149,8 +156,10 @@ def scan(
         reverse=True,
     )
 
+    notes = _coverage_notes(total_files, len(providers))
+
     output_findings = visible + suppressed if show_suppressed else visible
-    output_text = render(output_findings, output_format, output_file)
+    output_text = render(output_findings, output_format, output_file, notes=notes)
 
     exit_code = _compute_exit_code(visible, fail_on)
 
@@ -159,6 +168,7 @@ def scan(
         suppressed=suppressed,
         exit_code=exit_code,
         output_text=output_text,
+        notes=notes,
     )
 
 
@@ -451,6 +461,17 @@ def _extract_composite_expressions(text: str) -> list[Expression]:
             )
         )
     return exprs
+
+
+def _coverage_notes(file_count: int, provider_count: int) -> list[str]:
+    notes: list[str] = []
+    if file_count == 0:
+        notes.append(
+            "No pipeline files found. Verify the scan path contains CI/CD configurations."
+        )
+    elif file_count == 1 and provider_count == 1:
+        notes.append(f"Only {file_count} pipeline file found — coverage may be incomplete.")
+    return notes
 
 
 def _compute_exit_code(findings: list[Finding], fail_on: str | None) -> int:

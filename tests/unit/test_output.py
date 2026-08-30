@@ -25,6 +25,45 @@ def _sample_finding() -> Finding:
     )
 
 
+class TestNotes:
+    def test_json_includes_notes(self) -> None:
+        text = render_json([], notes=["Coverage may be incomplete."])
+        data = json.loads(text)
+        assert data["notes"] == ["Coverage may be incomplete."]
+
+    def test_json_omits_notes_when_empty(self) -> None:
+        text = render_json([])
+        data = json.loads(text)
+        assert "notes" not in data
+
+    def test_yaml_includes_notes(self) -> None:
+        text = render_yaml([], notes=["Coverage may be incomplete."])
+        data = yaml.safe_load(text)
+        assert data["notes"] == ["Coverage may be incomplete."]
+
+    def test_sarif_includes_notes(self) -> None:
+        text = render_sarif([], notes=["Coverage may be incomplete."])
+        data = json.loads(text)
+        invocations = data["runs"][0]["invocations"]
+        notifications = invocations[0]["toolExecutionNotifications"]
+        assert len(notifications) == 1
+        assert notifications[0]["message"]["text"] == "Coverage may be incomplete."
+
+    def test_sarif_no_invocations_without_notes(self) -> None:
+        text = render_sarif([])
+        data = json.loads(text)
+        assert "invocations" not in data["runs"][0]
+
+    def test_markdown_includes_notes(self) -> None:
+        text = render_markdown([], notes=["Coverage may be incomplete."])
+        assert "Coverage may be incomplete." in text
+
+    def test_ocsf_includes_notes(self) -> None:
+        text = render_ocsf([], notes=["Coverage may be incomplete."])
+        data = json.loads(text)
+        assert data["notes"] == ["Coverage may be incomplete."]
+
+
 class TestJSON:
     def test_valid_json(self) -> None:
         text = render_json([_sample_finding()])

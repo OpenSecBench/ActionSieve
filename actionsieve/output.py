@@ -24,17 +24,19 @@ def render(
     findings: list[Finding],
     fmt: str,
     output_file: Path | None = None,
+    *,
+    notes: list[str] | None = None,
 ) -> str:
     if fmt == "json":
-        text = render_json(findings)
+        text = render_json(findings, notes=notes)
     elif fmt == "yaml":
-        text = render_yaml(findings)
+        text = render_yaml(findings, notes=notes)
     elif fmt == "sarif":
-        text = render_sarif(findings)
+        text = render_sarif(findings, notes=notes)
     elif fmt == "markdown":
-        text = render_markdown(findings)
+        text = render_markdown(findings, notes=notes)
     elif fmt == "ocsf":
-        text = render_ocsf(findings)
+        text = render_ocsf(findings, notes=notes)
     else:
         msg = f"Unknown format: {fmt}"
         raise ValueError(msg)
@@ -45,22 +47,21 @@ def render(
     return text
 
 
-def render_json(findings: list[Finding]) -> str:
-    return json.dumps(
-        {"findings": [_finding_dict(f) for f in findings]},
-        indent=2,
-    )
+def render_json(findings: list[Finding], *, notes: list[str] | None = None) -> str:
+    result: dict[str, Any] = {"findings": [_finding_dict(f) for f in findings]}
+    if notes:
+        result["notes"] = notes
+    return json.dumps(result, indent=2)
 
 
-def render_yaml(findings: list[Finding]) -> str:
-    return yaml.dump(
-        {"findings": [_finding_dict(f) for f in findings]},
-        default_flow_style=False,
-        sort_keys=False,
-    )
+def render_yaml(findings: list[Finding], *, notes: list[str] | None = None) -> str:
+    result: dict[str, Any] = {"findings": [_finding_dict(f) for f in findings]}
+    if notes:
+        result["notes"] = notes
+    return yaml.dump(result, default_flow_style=False, sort_keys=False)
 
 
-def render_sarif(findings: list[Finding]) -> str:
+def render_sarif(findings: list[Finding], *, notes: list[str] | None = None) -> str:
     rules: list[dict[str, Any]] = []
     results: list[dict[str, Any]] = []
     seen_rules: set[str] = set()
@@ -100,27 +101,37 @@ def render_sarif(findings: list[Finding]) -> str:
             result["taxa"] = [{"id": f.cwe, "toolComponent": {"name": "CWE"}}]
         results.append(result)
 
+    run: dict[str, Any] = {
+        "tool": {
+            "driver": {
+                "name": "actionsieve",
+                "informationUri": "https://github.com/OpenSecBench/actionsieve",
+                "rules": rules,
+            },
+        },
+        "results": results,
+    }
+
+    if notes:
+        run["invocations"] = [
+            {
+                "executionSuccessful": True,
+                "toolExecutionNotifications": [
+                    {"level": "note", "message": {"text": n}} for n in notes
+                ],
+            }
+        ]
+
     sarif: dict[str, Any] = {
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
         "version": "2.1.0",
-        "runs": [
-            {
-                "tool": {
-                    "driver": {
-                        "name": "actionsieve",
-                        "informationUri": "https://github.com/OpenSecBench/actionsieve",
-                        "rules": rules,
-                    },
-                },
-                "results": results,
-            },
-        ],
+        "runs": [run],
     }
 
     return json.dumps(sarif, indent=2)
 
 
-def render_markdown(findings: list[Finding]) -> str:
+def render_markdown(findings: list[Finding], *, notes: list[str] | None = None) -> str:
     grouped: list[tuple[str, list[Finding]]] = []
     by_severity: dict[str, list[Finding]] = {}
     for f in findings:
@@ -145,17 +156,21 @@ def render_markdown(findings: list[Finding]) -> str:
         summary=summary,
         findings=findings,
         grouped=grouped,
+        notes=notes or [],
     )
 
 
-def render_ocsf(findings: list[Finding]) -> str:
+def render_ocsf(findings: list[Finding], *, notes: list[str] | None = None) -> str:
     now = datetime.now(UTC).isoformat()
     metadata: dict[str, Any] = {
         "version": "1.4.0",
         "product": {"name": "actionsieve", "vendor_name": "actionsieve"},
     }
     events = [_ocsf_event(f, now, metadata) for f in findings]
-    return json.dumps({"detection_findings": events}, indent=2)
+    result: dict[str, Any] = {"detection_findings": events}
+    if notes:
+        result["notes"] = notes
+    return json.dumps(result, indent=2)
 
 
 def _ocsf_event(f: Finding, ts: str, metadata: dict[str, Any]) -> dict[str, Any]:
