@@ -23,9 +23,18 @@ class TestScanVulnerable:
 
     def test_findings_sorted_by_severity(self) -> None:
         result = scan(FIXTURES / "vulnerable", platform="github")
+        assert len(result.findings) > 0
         severity_order = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
-        severities = [severity_order.get(f.severity_base, 0) for f in result.findings]
+        severities = [
+            severity_order.get(f.severity_computed or f.severity_base, 0) for f in result.findings
+        ]
         assert severities == sorted(severities, reverse=True)
+
+    def test_severity_computed_set(self) -> None:
+        result = scan(FIXTURES / "vulnerable", platform="github")
+        assert len(result.findings) > 0
+        for f in result.findings:
+            assert f.severity_computed is not None
 
 
 class TestScanSafe:
@@ -77,7 +86,21 @@ class TestScanSuppression:
     def test_suppressed_excluded_by_default(self) -> None:
         normal = scan(FIXTURES / "vulnerable", platform="github")
         hardened = scan(FIXTURES / "vulnerable", platform="github", profile_name="hardened")
+        assert len(normal.findings) > 0
         assert len(hardened.findings) <= len(normal.findings)
+
+    def test_elevation_boosts_severity(self) -> None:
+        result = scan(
+            FIXTURES / "vulnerable",
+            platform="github",
+            profile_name="self-hosted",
+        )
+        elevated = [
+            f
+            for f in result.findings
+            if f.severity_computed and f.severity_computed != f.severity_base
+        ]
+        assert len(elevated) > 0
 
 
 class TestScanNoProvider:

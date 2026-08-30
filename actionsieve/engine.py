@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -21,10 +22,16 @@ class Finding:
     severity_base: str
     attacker_model: str
     impact: str | list[str]
+    severity_computed: str | None = None
     evidence: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
     cwe: str | None = None
     mitigations: list[str] = field(default_factory=list)
+
+
+_WARNED_TYPES: set[str] = set()
+
+SUPPORTED_TYPES = frozenset({"single_step", "structural", "supply_chain"})
 
 
 def match(model: WorkflowModel, patterns: list[dict[str, Any]]) -> list[Finding]:
@@ -39,6 +46,13 @@ def match(model: WorkflowModel, patterns: list[dict[str, Any]]) -> list[Finding]
             findings.extend(_match_structural(model, pattern))
         elif dtype == "supply_chain":
             findings.extend(_match_supply_chain(model, pattern))
+        elif dtype and dtype not in _WARNED_TYPES:
+            _WARNED_TYPES.add(dtype)
+            warnings.warn(
+                f"Unsupported detection type '{dtype}' in pattern "
+                f"'{pattern.get('id', '?')}' — skipped",
+                stacklevel=1,
+            )
 
     return findings
 

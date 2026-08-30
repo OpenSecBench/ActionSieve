@@ -11,7 +11,13 @@ from actionsieve.output import render
 from actionsieve.patterns import load_patterns
 from actionsieve.profiles import load_profile
 from actionsieve.providers import ParseError, auto_detect, get_provider
-from actionsieve.severity import apply_profile, compute_static, is_suppressed
+from actionsieve.severity import (
+    apply_profile,
+    compute_static,
+    elevate_severity,
+    is_elevated,
+    is_suppressed,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -91,9 +97,14 @@ def scan(
 
     for finding in visible:
         computed = apply_profile(finding.severity_base, profile)
-        finding.severity_base = computed
+        if is_elevated(finding, profile):
+            computed = elevate_severity(computed)
+        finding.severity_computed = computed
 
-    visible.sort(key=lambda f: SEVERITY_ORDER.get(f.severity_base, 0), reverse=True)
+    visible.sort(
+        key=lambda f: SEVERITY_ORDER.get(f.severity_computed or f.severity_base, 0),
+        reverse=True,
+    )
 
     output_findings = visible + suppressed if show_suppressed else visible
     output_text = render(output_findings, output_format, output_file)
@@ -142,7 +153,9 @@ def _compute_exit_code(findings: list[Finding], fail_on: str | None) -> int:
     if not findings:
         return EXIT_CLEAN
 
-    max_severity = max(SEVERITY_ORDER.get(f.severity_base, 0) for f in findings)
+    max_severity = max(
+        SEVERITY_ORDER.get(f.severity_computed or f.severity_base, 0) for f in findings
+    )
 
     if max_severity >= SEVERITY_ORDER.get("critical", 4):
         return EXIT_CRITICAL

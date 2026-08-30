@@ -74,12 +74,15 @@ patterns:
       type: single_step
       in_block: script
       grep_patterns:
-        - "actions/github-script"
-      dangerous_patterns:
-        - "const x = '${{ ... }}'"
-        - 'const x = "${{ ... }}"'
-        - "`${{ ... }}`"
-      look_for: "${{ }} inside string literals in the script body"
+        - '${{ github.event.pull_request.title }}'
+        - '${{ github.event.pull_request.body }}'
+        - '${{ github.event.pull_request.head.ref }}'
+        - '${{ github.event.issue.title }}'
+        - '${{ github.event.issue.body }}'
+        - '${{ github.event.comment.body }}'
+        - '${{ github.event.head_commit.message }}'
+        - '${{ github.event.workflow_run.display_title }}'
+        - '${{ github.head_ref }}'
     mitigations:
       - Pass untrusted values via env vars, access as process.env.X in script
       - Use core.getInput() for action inputs
@@ -188,7 +191,6 @@ patterns:
       type: single_step
       in_block: run
       grep_patterns:
-        - 'workflow_dispatch'
         - '${{ github.event.inputs.'
         - '${{ inputs.'
       safe_if:

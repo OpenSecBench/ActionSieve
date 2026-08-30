@@ -72,9 +72,10 @@ def render_sarif(findings: list[Finding]) -> str:
             )
             seen_rules.add(f.pattern_id)
 
+        effective_severity = f.severity_computed or f.severity_base
         result: dict[str, Any] = {
             "ruleId": f.pattern_id,
-            "level": _sarif_level(f.severity_base),
+            "level": _sarif_level(effective_severity),
             "message": {"text": "; ".join(f.evidence)},
             "locations": [
                 {

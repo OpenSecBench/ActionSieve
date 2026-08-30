@@ -22,6 +22,7 @@ patterns:
       GITHUB_OUTPUT override is usually low — misdirected routing.
     detection:
       type: single_step
+      in_block: run
       grep_patterns:
         - '<<EOF'
         - '<<HEREDOC'

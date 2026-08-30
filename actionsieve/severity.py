@@ -65,13 +65,6 @@ def apply_profile(
         if secrets.get("rotation") == "automatic":
             modifier -= 1
 
-    elevate = profile.get("elevate", [])
-    suppress = profile.get("suppress", [])
-    if isinstance(elevate, list):
-        modifier += len(elevate) > 0 and 0
-    if isinstance(suppress, list):
-        pass
-
     return _clamp(base + modifier)
 
 
@@ -91,6 +84,10 @@ def is_elevated(finding: Finding, profile: dict[str, Any]) -> bool:
     tags = finding.tags
     pattern_id = finding.pattern_id
     return any(c in tags or pattern_id.startswith(c) for c in elevate)
+
+
+def elevate_severity(severity: str) -> str:
+    return _clamp(SEVERITY_MAP.get(severity, 2) + 1)
 
 
 def _severity_category_adjustment(category: str, profile: dict[str, Any]) -> int:

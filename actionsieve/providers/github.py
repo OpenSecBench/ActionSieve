@@ -266,7 +266,7 @@ def _parse_step(index: int, data: dict[str, Any], lines: list[str]) -> Step:
     env = _str_dict(data.get("env", {}))
 
     all_text = _step_text(data)
-    expressions = _extract_expressions(all_text, shell_command)
+    expressions = _extract_expressions(all_text, shell_command, lines)
 
     outputs_written = _detect_outputs_written(shell_command)
 
@@ -330,16 +330,22 @@ def _classify_ref(ref: str) -> str:
     return "branch"
 
 
-def _extract_expressions(text: str, shell_command: str | None) -> list[Expression]:
+def _extract_expressions(
+    text: str,
+    shell_command: str | None,
+    file_lines: list[str] | None = None,
+) -> list[Expression]:
     expressions: list[Expression] = []
-    for match in EXPRESSION_RE.finditer(text):
-        context_path = match.group(1).strip()
-        raw = match.group(0)
+    for m in EXPRESSION_RE.finditer(text):
+        context_path = m.group(1).strip()
+        raw = m.group(0)
 
         in_shell = shell_command is not None and raw in (shell_command or "")
         location = "run" if in_shell else "other"
 
         is_tainted = any(context_path.startswith(prefix) for prefix in TAINTED_CONTEXT_PREFIXES)
+
+        line = _find_line(file_lines or [], raw) if file_lines else 0
 
         expressions.append(
             Expression(
@@ -348,7 +354,7 @@ def _extract_expressions(text: str, shell_command: str | None) -> list[Expressio
                 location=location,
                 is_in_shell=in_shell,
                 is_tainted=is_tainted,
-                line=0,
+                line=line,
             )
         )
 
