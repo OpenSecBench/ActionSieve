@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from actionsieve.api_client import APIResponse, RateLimiter
 from actionsieve.search import (
     GitHubBackend,
     GitLabBackend,
@@ -16,8 +17,6 @@ from actionsieve.search import (
     _parse_github_hit,
     _parse_github_repo,
     _parse_gitlab_project,
-    _RateLimiter,
-    _resolve_token,
     get_backend,
     search_org,
     search_pattern,
@@ -35,20 +34,6 @@ class TestRepoInfo:
         )
         assert info.stars == 0
         assert info.is_fork is False
-
-
-class TestRateLimiter:
-    def test_first_call_no_delay(self) -> None:
-        rl = _RateLimiter(1.0)
-        rl.wait()
-        assert rl._last > 0
-
-    def test_respects_interval(self) -> None:
-        rl = _RateLimiter(0.01)
-        rl.wait()
-        first = rl._last
-        rl.wait()
-        assert rl._last >= first + 0.01
 
 
 class TestParseGithubRepo:
@@ -153,29 +138,6 @@ class TestParseGitlabProject:
         assert info.is_fork is True
 
 
-class TestResolveToken:
-    def test_explicit_wins(self) -> None:
-        assert _resolve_token("github", "my-token") == "my-token"
-
-    def test_actionsieve_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("ACTIONSIEVE_GITHUB_TOKEN", "as-token")
-        assert _resolve_token("github", None) == "as-token"
-
-    def test_platform_env_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("GITHUB_TOKEN", "gh-token")
-        assert _resolve_token("github", None) == "gh-token"
-
-    def test_actionsieve_takes_precedence(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("ACTIONSIEVE_GITHUB_TOKEN", "as-token")
-        monkeypatch.setenv("GITHUB_TOKEN", "gh-token")
-        assert _resolve_token("github", None) == "as-token"
-
-    def test_no_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv("ACTIONSIEVE_GITHUB_TOKEN", raising=False)
-        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
-        assert _resolve_token("github", None) is None
-
-
 class TestGetBackend:
     def test_github(self) -> None:
         backend = get_backend("github", "token")
@@ -190,14 +152,15 @@ class TestGetBackend:
             get_backend("bitbucket")
 
 
+@patch.object(RateLimiter, "wait", new=lambda self: None)
 class TestGitHubBackend:
     def test_search_code_requires_token(self) -> None:
         backend = GitHubBackend(token=None)
         with pytest.raises(SearchError, match="requires authentication"):
             list(backend.search_code("test query"))
 
-    @patch("actionsieve.search._api_get")
-    def test_list_repos_pagination(self, mock_get: MagicMock) -> None:
+    @patch("actionsieve.api_client._make_request")
+    def test_list_repos_pagination(self, mock_req: MagicMock) -> None:
         page1 = [
             {
                 "owner": {"login": "org"},
@@ -219,70 +182,86 @@ class TestGitHubBackend:
                 "stargazers_count": 100,
             }
         ]
-        mock_get.side_effect = [page1, page2]
+        mock_req.side_effect = [
+            APIResponse(data=page1, etag=None, rate_remaining=100),
+            APIResponse(data=page2, etag=None, rate_remaining=99),
+        ]
         backend = GitHubBackend(token="tok")
         repos = list(backend.list_repos("org"))
         assert len(repos) == 101
-        assert mock_get.call_count == 2
+        assert mock_req.call_count == 2
 
-    @patch("actionsieve.search._api_get")
-    def test_list_repos_empty(self, mock_get: MagicMock) -> None:
-        mock_get.return_value = []
+    @patch("actionsieve.api_client._make_request")
+    def test_list_repos_empty(self, mock_req: MagicMock) -> None:
+        mock_req.return_value = APIResponse(data=[], etag=None, rate_remaining=100)
         backend = GitHubBackend(token="tok")
         repos = list(backend.list_repos("org"))
         assert repos == []
 
-    @patch("actionsieve.search._api_get")
-    def test_search_code_dedup_pages(self, mock_get: MagicMock) -> None:
-        mock_get.return_value = {
-            "total_count": 1,
-            "items": [
-                {
-                    "path": ".github/workflows/ci.yml",
-                    "repository": {
-                        "owner": {"login": "org"},
-                        "name": "repo",
-                        "full_name": "org/repo",
-                        "default_branch": "main",
-                        "clone_url": "https://github.com/org/repo.git",
-                    },
-                }
-            ],
-        }
+    @patch("actionsieve.api_client._make_request")
+    def test_search_code_dedup_pages(self, mock_req: MagicMock) -> None:
+        mock_req.return_value = APIResponse(
+            data={
+                "total_count": 1,
+                "items": [
+                    {
+                        "path": ".github/workflows/ci.yml",
+                        "repository": {
+                            "owner": {"login": "org"},
+                            "name": "repo",
+                            "full_name": "org/repo",
+                            "default_branch": "main",
+                            "clone_url": "https://github.com/org/repo.git",
+                        },
+                    }
+                ],
+            },
+            etag=None,
+            rate_remaining=100,
+        )
         backend = GitHubBackend(token="tok")
         hits = list(backend.search_code("test query"))
         assert len(hits) == 1
         assert hits[0].repo.full_name == "org/repo"
 
-    @patch("actionsieve.search._api_get")
-    def test_search_code_org_scoped(self, mock_get: MagicMock) -> None:
-        mock_get.return_value = {"total_count": 0, "items": []}
+    @patch("actionsieve.api_client._make_request")
+    def test_search_code_org_scoped(self, mock_req: MagicMock) -> None:
+        mock_req.return_value = APIResponse(
+            data={"total_count": 0, "items": []},
+            etag=None,
+            rate_remaining=100,
+        )
         backend = GitHubBackend(token="tok")
         list(backend.search_code("test", org="myorg"))
-        called_url = mock_get.call_args[0][0]
+        called_url = mock_req.call_args[0][0]
         assert "org%3Amyorg" in called_url
 
 
+@patch.object(RateLimiter, "wait", new=lambda self: None)
 class TestGitLabBackend:
-    @patch("actionsieve.search._api_get")
-    def test_list_repos(self, mock_get: MagicMock) -> None:
-        mock_get.return_value = [
-            {
-                "namespace": {"full_path": "mygroup"},
-                "path": "myproject",
-                "path_with_namespace": "mygroup/myproject",
-                "default_branch": "main",
-                "http_url_to_repo": "https://gitlab.com/mygroup/myproject.git",
-                "star_count": 5,
-            }
-        ]
+    @patch("actionsieve.api_client._make_request")
+    def test_list_repos(self, mock_req: MagicMock) -> None:
+        mock_req.return_value = APIResponse(
+            data=[
+                {
+                    "namespace": {"full_path": "mygroup"},
+                    "path": "myproject",
+                    "path_with_namespace": "mygroup/myproject",
+                    "default_branch": "main",
+                    "http_url_to_repo": "https://gitlab.com/mygroup/myproject.git",
+                    "star_count": 5,
+                }
+            ],
+            etag=None,
+            rate_remaining=None,
+        )
         backend = GitLabBackend(token="tok")
         repos = list(backend.list_repos("mygroup"))
         assert len(repos) == 1
         assert repos[0].full_name == "mygroup/myproject"
 
-    @patch("actionsieve.search._api_get")
-    def test_search_code_with_cache(self, mock_get: MagicMock) -> None:
+    @patch("actionsieve.api_client._make_request")
+    def test_search_code_with_cache(self, mock_req: MagicMock) -> None:
         blob_response = [
             {"project_id": 42, "filename": ".gitlab-ci.yml"},
             {"project_id": 42, "filename": "other.yml"},
@@ -295,11 +274,14 @@ class TestGitLabBackend:
             "http_url_to_repo": "https://gitlab.com/grp/proj.git",
             "star_count": 3,
         }
-        mock_get.side_effect = [blob_response, project_response]
+        mock_req.side_effect = [
+            APIResponse(data=blob_response, etag=None, rate_remaining=None),
+            APIResponse(data=project_response, etag=None, rate_remaining=None),
+        ]
         backend = GitLabBackend(token="tok")
         hits = list(backend.search_code("CI_MERGE_REQUEST_TITLE"))
         assert len(hits) == 1
-        assert mock_get.call_count == 2
+        assert mock_req.call_count == 2
 
 
 class TestFindingDict:

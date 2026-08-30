@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-import json
-import os
 import subprocess
 import tempfile
-import time
-import urllib.error
 import urllib.parse
-import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
+
+from actionsieve.api_client import APIError, GitHubAPI, GitLabAPI, resolve_token
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -59,57 +56,22 @@ class ForgeBackend(Protocol):
     def search_code(self, query: str, org: str | None = None) -> Iterator[SearchHit]: ...
 
 
-class _RateLimiter:
-    def __init__(self, min_interval: float) -> None:
-        self._min_interval = min_interval
-        self._last = 0.0
-
-    def wait(self) -> None:
-        now = time.monotonic()
-        gap = self._min_interval - (now - self._last)
-        if gap > 0:
-            time.sleep(gap)
-        self._last = time.monotonic()
-
-
-def _api_get(url: str, headers: dict[str, str]) -> Any:
-    req = urllib.request.Request(url)  # noqa: S310
-    for k, v in headers.items():
-        req.add_header(k, v)
-    with urllib.request.urlopen(req) as resp:  # noqa: S310
-        return json.loads(resp.read())
-
-
 class GitHubBackend:
     name = "github"
 
     def __init__(self, token: str | None = None) -> None:
         self._token = token
-        self._rate = _RateLimiter(2.0 if token else 60.0)
-        self._headers: dict[str, str] = {
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        }
-        if token:
-            self._headers["Authorization"] = f"Bearer {token}"
+        self._api = GitHubAPI(token=token)
 
     def list_repos(self, org: str) -> Iterator[RepoInfo]:
-        page = 1
-        while True:
-            encoded = urllib.parse.quote(org, safe="")
-            url = (
-                f"https://api.github.com/orgs/{encoded}/repos?per_page=100&page={page}&sort=pushed"
-            )
-            data = self._get(url)
-            if not isinstance(data, list) or not data:
-                break
-            for repo in data:
+        encoded = urllib.parse.quote(org, safe="")
+        for page in self._api.get_pages(
+            f"/orgs/{encoded}/repos?sort=pushed",
+        ):
+            for repo in page:
                 info = _parse_github_repo(repo, org)
                 if info:
                     yield info
-            if len(data) < 100:
-                break
-            page += 1
 
     def search_code(self, query: str, org: str | None = None) -> Iterator[SearchHit]:
         if not self._token:
@@ -117,11 +79,13 @@ class GitHubBackend:
                 "GitHub code search requires authentication (--token or GITHUB_TOKEN)"
             )
         full_query = f"org:{org} {query}" if org else query
+        encoded = urllib.parse.quote(full_query, safe="")
         page = 1
-        while True:
-            encoded = urllib.parse.quote(full_query, safe="")
-            url = f"https://api.github.com/search/code?q={encoded}&per_page=100&page={page}"
-            data = self._get(url)
+        while page <= 10:
+            try:
+                data = self._api.get(f"/search/code?q={encoded}&per_page=100&page={page}")
+            except APIError as e:
+                raise SearchError(str(e)) from e
             if not isinstance(data, dict):
                 break
             items = data.get("items")
@@ -132,27 +96,9 @@ class GitHubBackend:
                 if hit:
                     yield hit
             total = data.get("total_count", 0)
-            if not isinstance(total, int):
-                break
-            if page * 100 >= total or page >= 10:
+            if not isinstance(total, int) or page * 100 >= total:
                 break
             page += 1
-
-    def _get(self, url: str) -> Any:
-        self._rate.wait()
-        try:
-            return _api_get(url, self._headers)
-        except urllib.error.HTTPError as e:
-            if e.code == 403:
-                retry = e.headers.get("Retry-After")
-                if retry:
-                    time.sleep(min(float(retry), 120))
-                    return self._get(url)
-            if e.code in (404, 422):
-                return None
-            raise SearchError(f"GitHub API {e.code}: {url}") from e
-        except urllib.error.URLError as e:
-            raise SearchError(f"Network error: {e.reason}") from e
 
 
 def _parse_github_repo(data: Any, fallback_org: str) -> RepoInfo | None:
@@ -185,48 +131,34 @@ class GitLabBackend:
 
     def __init__(self, token: str | None = None, base_url: str = "https://gitlab.com") -> None:
         self._token = token
+        self._api = GitLabAPI(token=token, base_url=base_url)
         self._base = base_url.rstrip("/")
-        self._rate = _RateLimiter(0.2)
-        self._headers: dict[str, str] = {}
-        if token:
-            self._headers["PRIVATE-TOKEN"] = token
         self._project_cache: dict[int, RepoInfo | None] = {}
 
     def list_repos(self, group: str) -> Iterator[RepoInfo]:
-        page = 1
         encoded = urllib.parse.quote(group, safe="")
-        while True:
-            url = (
-                f"{self._base}/api/v4/groups/{encoded}/projects"
-                f"?per_page=100&page={page}&include_subgroups=true"
-                f"&order_by=last_activity_at"
-            )
-            data = self._get(url)
-            if not isinstance(data, list) or not data:
-                break
-            for proj in data:
+        for page in self._api.get_pages(
+            f"/api/v4/groups/{encoded}/projects?include_subgroups=true&order_by=last_activity_at",
+        ):
+            for proj in page:
                 info = _parse_gitlab_project(proj, group)
                 if info:
                     yield info
-            if len(data) < 100:
-                break
-            page += 1
 
     def search_code(self, query: str, org: str | None = None) -> Iterator[SearchHit]:
         if org:
             encoded = urllib.parse.quote(org, safe="")
-            base = f"{self._base}/api/v4/groups/{encoded}/search"
+            base = f"/api/v4/groups/{encoded}/search"
         else:
-            base = f"{self._base}/api/v4/search"
-        page = 1
+            base = "/api/v4/search"
+        encoded_q = urllib.parse.quote(query, safe="")
         seen: set[str] = set()
-        while True:
-            encoded_q = urllib.parse.quote(query, safe="")
-            url = f"{base}?scope=blobs&search={encoded_q}&per_page=20&page={page}"
-            data = self._get(url)
-            if not isinstance(data, list) or not data:
-                break
-            for blob in data:
+        for page in self._api.get_pages(
+            f"{base}?scope=blobs&search={encoded_q}",
+            per_page=20,
+            max_pages=100,
+        ):
+            for blob in page:
                 if not isinstance(blob, dict):
                     continue
                 proj_id = blob.get("project_id")
@@ -237,36 +169,17 @@ class GitLabBackend:
                     continue
                 seen.add(repo.full_name)
                 yield SearchHit(repo=repo, file_path=blob.get("filename", ""))
-            if len(data) < 20:
-                break
-            page += 1
-            if page > 100:
-                break
 
     def _resolve_project(self, project_id: int) -> RepoInfo | None:
         if project_id in self._project_cache:
             return self._project_cache[project_id]
-        url = f"{self._base}/api/v4/projects/{project_id}"
-        data = self._get(url)
+        try:
+            data = self._api.get(f"/api/v4/projects/{project_id}")
+        except APIError:
+            data = None
         info = _parse_gitlab_project(data, "") if isinstance(data, dict) else None
         self._project_cache[project_id] = info
         return info
-
-    def _get(self, url: str) -> Any:
-        self._rate.wait()
-        try:
-            return _api_get(url, self._headers)
-        except urllib.error.HTTPError as e:
-            if e.code == 429:
-                retry = e.headers.get("Retry-After")
-                if retry:
-                    time.sleep(min(float(retry), 120))
-                    return self._get(url)
-            if e.code in (404, 422):
-                return None
-            raise SearchError(f"GitLab API {e.code}: {url}") from e
-        except urllib.error.URLError as e:
-            raise SearchError(f"Network error: {e.reason}") from e
 
 
 def _parse_gitlab_project(data: Any, fallback_group: str) -> RepoInfo | None:
@@ -286,20 +199,13 @@ def _parse_gitlab_project(data: Any, fallback_group: str) -> RepoInfo | None:
 
 
 def get_backend(forge: str, token: str | None = None) -> ForgeBackend:
-    resolved = _resolve_token(forge, token)
+    resolved = resolve_token(forge, token)
     if forge == "github":
         return GitHubBackend(resolved)
     if forge == "gitlab":
         return GitLabBackend(resolved)
     msg = f"Unknown forge: {forge}"
     raise SearchError(msg)
-
-
-def _resolve_token(forge: str, explicit: str | None) -> str | None:
-    if explicit:
-        return explicit
-    upper = forge.upper()
-    return os.environ.get(f"ACTIONSIEVE_{upper}_TOKEN") or os.environ.get(f"{upper}_TOKEN")
 
 
 def search_org(
