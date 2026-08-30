@@ -347,6 +347,7 @@ def _parse_step(index: int, data: dict[str, Any], lines: list[str]) -> Step | No
 
 def _parse_task_ref(task_str: str, lines: list[str]) -> ComponentRef:
     name, ref = task_str.rsplit("@", 1) if "@" in task_str else (task_str, "")
+    is_builtin = ref.isdigit()
     return ComponentRef(
         raw=task_str,
         owner=None,
@@ -354,7 +355,7 @@ def _parse_task_ref(task_str: str, lines: list[str]) -> ComponentRef:
         ref=ref,
         ref_type="tag" if ref else "unknown",
         is_pinned=False,
-        is_first_party=name.lower().startswith(("azure", "ms", "microsoft")),
+        is_first_party=is_builtin,
         line=_find_line(lines, task_str),
     )
 
