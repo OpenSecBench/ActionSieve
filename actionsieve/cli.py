@@ -148,5 +148,20 @@ def inventory(
     offline: bool,
 ) -> None:
     """Generate a bill of materials for CI/CD components."""
-    # TODO: Wire to inventory module once it exists (Phase 2)
-    raise click.ClickException("inventory command not yet implemented — see TODO.md Phase 2")
+    from actionsieve.inventory import run_inventory
+    from actionsieve.output import render_inventory
+
+    inv = run_inventory(
+        repo_path=path,
+        platform=platform,
+        check=check,
+        offline=offline,
+    )
+
+    text = render_inventory(inv, output_format, output_file)
+
+    if not output_file:
+        click.echo(text)
+
+    exit_code = 3 if inv.advisory_matches > 0 else 0
+    raise SystemExit(exit_code)

@@ -1,4 +1,4 @@
-"""Result formatting — JSON, YAML, and SARIF output."""
+"""Result formatting — JSON, YAML, SARIF, and CycloneDX output."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from actionsieve.engine import Finding
+    from actionsieve.inventory import Inventory
 
 
 def render(
@@ -113,6 +114,72 @@ def render_sarif(findings: list[Finding]) -> str:
 def _finding_dict(f: Finding) -> dict[str, Any]:
     d = asdict(f)
     return {k: v for k, v in d.items() if v is not None and v != [] and v != {}}
+
+
+def render_inventory(
+    inv: Inventory,
+    fmt: str,
+    output_file: Path | None = None,
+) -> str:
+    if fmt == "json":
+        text = json.dumps(inv.to_dict(), indent=2)
+    elif fmt == "yaml":
+        text = yaml.dump(inv.to_dict(), default_flow_style=False, sort_keys=False)
+    elif fmt == "cyclonedx":
+        text = _render_cyclonedx(inv)
+    else:
+        msg = f"Unknown inventory format: {fmt}"
+        raise ValueError(msg)
+
+    if output_file:
+        output_file.write_text(text, encoding="utf-8")
+
+    return text
+
+
+def _render_cyclonedx(inv: Inventory) -> str:
+    components: list[dict[str, Any]] = []
+
+    for comp in inv.components:
+        purl = _make_purl(comp)
+        cdx_comp: dict[str, Any] = {
+            "type": "library",
+            "name": comp.key,
+            "version": comp.ref,
+            "purl": purl,
+            "properties": [
+                {"name": "actionsieve:ref_type", "value": comp.ref_type},
+                {"name": "actionsieve:is_pinned", "value": str(comp.is_pinned).lower()},
+                {"name": "actionsieve:is_first_party", "value": str(comp.is_first_party).lower()},
+            ],
+        }
+        if comp.trust_score:
+            cdx_comp["properties"].append(
+                {"name": "actionsieve:trust_score", "value": comp.trust_score}
+            )
+        if comp.advisory_ids:
+            cdx_comp["properties"].append(
+                {"name": "actionsieve:advisories", "value": ",".join(comp.advisory_ids)}
+            )
+        components.append(cdx_comp)
+
+    bom: dict[str, Any] = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "version": 1,
+        "metadata": {
+            "tools": [{"name": "actionsieve"}],
+        },
+        "components": components,
+    }
+
+    return json.dumps(bom, indent=2)
+
+
+def _make_purl(comp: Any) -> str:
+    if comp.owner:
+        return f"pkg:githubactions/{comp.owner}/{comp.name}@{comp.ref}"
+    return f"pkg:githubactions/{comp.name}@{comp.ref}"
 
 
 def _sarif_level(severity: str) -> str:

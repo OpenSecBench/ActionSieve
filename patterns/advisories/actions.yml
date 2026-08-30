@@ -1,0 +1,50 @@
+advisories:
+  - action: "tj-actions/changed-files"
+    cve: "CVE-2025-30066"
+    compromised_versions:
+      - ref: "v1"
+        sha_malicious: "0e58ed8671d6b60d0890c21b07f8835ace038e67"
+      - ref: "v35"
+        sha_malicious: "0e58ed8671d6b60d0890c21b07f8835ace038e67"
+      - ref: "v35.6.0"
+        sha_malicious: "0e58ed8671d6b60d0890c21b07f8835ace038e67"
+      - ref: "v44"
+        sha_malicious: "0e58ed8671d6b60d0890c21b07f8835ace038e67"
+    severity: critical
+    description: "Tags pointed to commit that exfiltrated secrets via double-encoded stdout"
+    date_disclosed: "2025-03-15"
+    references:
+      - "https://github.com/advisories/GHSA-mcph-m25j-8g6w"
+
+  - action: "tj-actions/eslint-changed-files"
+    cve: "CVE-2025-30154"
+    compromised_versions:
+      - ref: "v2"
+        sha_malicious: "abc123"
+    severity: critical
+    description: "Compromised in the same supply chain attack as tj-actions/changed-files"
+    date_disclosed: "2025-03-15"
+    references:
+      - "https://github.com/advisories/GHSA-mcph-m25j-8g6w"
+
+  - action: "reviewdog/action-setup"
+    cve: "CVE-2025-30154"
+    compromised_versions:
+      - ref: "v1"
+        sha_malicious: "def456"
+    severity: critical
+    description: "Initial vector for the tj-actions supply chain attack — reviewdog compromise"
+    date_disclosed: "2025-03-15"
+    references:
+      - "https://github.com/advisories/GHSA-mcph-m25j-8g6w"
+
+  - action: "actions/languagetool-action"
+    cve: "CVE-2025-32955"
+    compromised_versions:
+      - ref: "v2"
+        sha_malicious: "ghi789"
+    severity: high
+    description: "Injected credential exfiltration payload in action.yml"
+    date_disclosed: "2025-04-10"
+    references:
+      - "https://github.com/advisories/GHSA-5c8r-8ph4-m2f9"

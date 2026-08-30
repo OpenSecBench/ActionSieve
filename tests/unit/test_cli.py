@@ -39,8 +39,7 @@ class TestCLI:
         result = runner.invoke(main, ["scan", "."])
         assert result.exit_code == 0
 
-    def test_inventory_not_yet_implemented(self) -> None:
+    def test_inventory_runs_on_cwd(self) -> None:
         runner = CliRunner()
         result = runner.invoke(main, ["inventory", "."])
-        assert result.exit_code != 0
-        assert "not yet implemented" in result.output
+        assert result.exit_code == 0
