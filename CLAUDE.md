@@ -47,6 +47,7 @@ Properly separated modules — no god files:
 actionsieve/
   cli.py          — click entry point, no business logic
   scanner.py      — orchestrates scan: find files → parse → match → score → output
+  search.py       — forge-wide code search (GitHub/GitLab API, clone-and-scan)
   model.py        — normalized WorkflowModel dataclasses (platform-agnostic)
   engine.py       — pattern matching against WorkflowModel
   matchers.py     — structural pattern matchers
@@ -257,6 +258,8 @@ htmlcov/
 
 ## Current phase
 
-Phases 1–4, 6, and 7 complete. All platform providers implemented:
+Phases 1–7 complete. All platform providers implemented:
 GitHub, GitLab, Azure, Jenkins, CircleCI, Bitbucket, Buildkite, Drone,
-CodeBuild, Cloud Build. See `TODO.md` for remaining work.
+CodeBuild, Cloud Build. Phase 5 (forge search) complete: GitHub and
+GitLab backends with org search and pattern-targeted code search.
+See `TODO.md` for remaining backlog items.

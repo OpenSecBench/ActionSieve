@@ -143,13 +143,14 @@
 
 ## Phase 5: Forge search
 
-- [ ] `search.py` — query generator from pattern catalog (per-provider)
-- [ ] `search.py` — GitHub: `gh search code` with rate limiting + pagination
-- [ ] `search.py` — GitLab: API search integration
-- [ ] `search.py` — result dedup, caching, candidate prioritization
-- [ ] `search.py` — clone-and-scan pipeline
-- [ ] `cli.py` — `actionsieve search <org>` and `actionsieve search --all <pattern>`
-- [ ] E2E tests (mocked API responses)
+- [x] `search.py` — ForgeBackend protocol + GitHub/GitLab backends
+- [x] `search.py` — GitHub REST API: code search + org repo listing with rate limiting + pagination
+- [x] `search.py` — GitLab REST API: group project listing + blob search with project cache
+- [x] `search.py` — result dedup by repo, fork filtering
+- [x] `search.py` — clone-and-scan pipeline (shallow clone → scanner.scan → stream results)
+- [x] `cli.py` — `actionsieve search <org>` and `actionsieve search --pattern <id>`
+- [x] Token resolution: `--token`, `ACTIONSIEVE_GITHUB_TOKEN`, `GITHUB_TOKEN` (same for GitLab)
+- [x] Unit + E2E tests (mocked API responses)
 
 ## Phase 6: Jenkins + reporting + polish
 

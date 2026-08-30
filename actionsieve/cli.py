@@ -259,6 +259,108 @@ def _print_pattern(p: dict[str, Any]) -> None:
         click.echo(f"  Tags: {', '.join(str(t) for t in tags)}")
 
 
+@main.command()
+@click.argument("target", required=False)
+@click.option(
+    "--pattern",
+    "pattern_id",
+    type=str,
+    help="Pattern ID for targeted code search.",
+)
+@click.option(
+    "--forge",
+    type=click.Choice(["github", "gitlab"]),
+    default="github",
+    help="Forge to search (default: github).",
+)
+@click.option(
+    "--token",
+    type=str,
+    help="API token (also reads GITHUB_TOKEN / GITLAB_TOKEN env vars).",
+)
+@click.option(
+    "--patterns",
+    type=click.Path(exists=True, path_type=Path),
+    help="Custom pattern catalog path.",
+)
+@click.option(
+    "--profile",
+    type=str,
+    help="Environment profile.",
+)
+@click.option(
+    "--include-forks",
+    is_flag=True,
+    default=False,
+    help="Include forked repos in org search.",
+)
+def search(
+    target: str | None,
+    pattern_id: str | None,
+    forge: str,
+    token: str | None,
+    patterns: Path | None,
+    profile: str | None,
+    include_forks: bool,
+) -> None:
+    """Search a forge for vulnerable CI/CD patterns.
+
+    TARGET is an org or group name for org-wide scanning.
+    Use --pattern for targeted code search across the forge.
+    """
+    import json
+
+    from actionsieve.search import SearchError, get_backend, search_org, search_pattern
+
+    if not target and not pattern_id:
+        raise click.UsageError("Provide an org/group name or --pattern for code search.")
+
+    try:
+        backend = get_backend(forge, token)
+    except SearchError as e:
+        click.echo(str(e), err=True)
+        raise SystemExit(1) from None
+
+    try:
+        if pattern_id:
+            results = search_pattern(
+                backend,
+                pattern_id,
+                org=target,
+                patterns_path=patterns,
+                profile_name=profile,
+            )
+        else:
+            assert target is not None
+            results = search_org(
+                backend,
+                target,
+                patterns_path=patterns,
+                profile_name=profile,
+                skip_forks=not include_forks,
+            )
+
+        count = 0
+        for result in results:
+            click.echo(
+                json.dumps(
+                    {
+                        "repo": result.repo,
+                        "forge": result.forge,
+                        "stars": result.stars,
+                        "findings": result.findings,
+                        "error": result.error,
+                    }
+                )
+            )
+            count += 1
+
+        click.echo(f"\n{count} repos with findings", err=True)
+    except SearchError as e:
+        click.echo(str(e), err=True)
+        raise SystemExit(1) from None
+
+
 @main.group()
 def profile() -> None:
     """Environment profile management."""
