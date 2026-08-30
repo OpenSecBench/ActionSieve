@@ -435,6 +435,77 @@ class TestExplainCommand:
         assert "expr-injection-run" in result.output
 
 
+class TestProfileResolve:
+    def test_resolve_default(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["profile", "resolve"])
+        assert result.exit_code == 0
+        assert "Resolved from: default" in result.output
+
+    def test_resolve_preset(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["profile", "resolve", "--profile", "self-hosted"])
+        assert result.exit_code == 0
+        assert "persistent" in result.output
+        assert "elevate" in result.output
+
+    def test_resolve_json_format(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main, ["profile", "resolve", "--profile", "hardened", "--format", "json"]
+        )
+        assert result.exit_code == 0
+        lines = [ln for ln in result.output.splitlines() if not ln.startswith("#")]
+        data = json.loads("\n".join(lines))
+        assert data["runners"]["isolation"] == "vm"
+        assert "self-hosted-runners" in data["suppress"]
+
+    def test_resolve_custom_file(self, tmp_path: Path) -> None:
+        p = tmp_path / "custom.yml"
+        p.write_text("extends: hosted-public\nsuppress:\n  - docker-in-docker\n")
+        runner = CliRunner()
+        result = runner.invoke(main, ["profile", "resolve", "--profile", str(p)])
+        assert result.exit_code == 0
+        assert "docker-in-docker" in result.output
+        assert "open" in result.output
+
+    def test_resolve_output_file(self, tmp_path: Path) -> None:
+        out = tmp_path / "profile.yml"
+        runner = CliRunner()
+        result = runner.invoke(
+            main, ["profile", "resolve", "--profile", "self-hosted", "--output", str(out)]
+        )
+        assert result.exit_code == 0
+        assert out.exists()
+        data = yaml.safe_load(out.read_text())
+        assert "runners" in data
+
+    def test_resolve_output_file_json(self, tmp_path: Path) -> None:
+        out = tmp_path / "profile.json"
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "profile",
+                "resolve",
+                "--profile",
+                "hardened",
+                "--format",
+                "json",
+                "--output",
+                str(out),
+            ],
+        )
+        assert result.exit_code == 0
+        data = json.loads(out.read_text())
+        assert "runners" in data
+
+    def test_resolve_unknown_profile_errors(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["profile", "resolve", "--profile", "nonexistent"])
+        assert result.exit_code != 0
+
+
 class TestVersionFlag:
     def test_version(self) -> None:
         runner = CliRunner()

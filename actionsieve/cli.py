@@ -255,3 +255,79 @@ def _print_pattern(p: dict[str, Any]) -> None:
     tags = p.get("tags", [])
     if tags:
         click.echo(f"  Tags: {', '.join(str(t) for t in tags)}")
+
+
+@main.group()
+def profile() -> None:
+    """Environment profile management."""
+
+
+@profile.command()
+@click.option(
+    "--profile",
+    "profile_name",
+    type=str,
+    help="Profile preset name or path to profile file.",
+)
+@click.option(
+    "--repo-path",
+    type=click.Path(exists=True, path_type=Path),
+    help="Repo path (for --trust-repo-profile).",
+)
+@click.option(
+    "--trust-repo-profile",
+    is_flag=True,
+    default=False,
+    help="Load .actionsieve.yml from the repo.",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["yaml", "json"]),
+    default="yaml",
+    help="Output format.",
+)
+@click.option(
+    "--output",
+    "output_file",
+    type=click.Path(path_type=Path),
+    help="Write output to file instead of stdout.",
+)
+def resolve(
+    profile_name: str | None,
+    repo_path: Path | None,
+    trust_repo_profile: bool,
+    output_format: str,
+    output_file: Path | None,
+) -> None:
+    """Print the effective profile after overlay resolution."""
+    import json
+
+    import yaml
+
+    from actionsieve.profiles import BUILTIN_PROFILES, load_profile
+
+    repo_profile = None
+    if trust_repo_profile and repo_path:
+        repo_profile = repo_path / ".actionsieve.yml"
+
+    resolved = load_profile(profile_name, repo_profile=repo_profile)
+
+    source = "default"
+    if profile_name:
+        source = profile_name if profile_name in BUILTIN_PROFILES else str(profile_name)
+    elif repo_profile and repo_profile.is_file():
+        source = str(repo_profile)
+
+    click.secho(f"# Resolved from: {source}", fg="green", err=True)
+
+    if output_format == "json":
+        text = json.dumps(resolved, indent=2)
+    else:
+        text = yaml.dump(resolved, default_flow_style=False, sort_keys=False).rstrip()
+
+    if output_file:
+        output_file.write_text(text + "\n", encoding="utf-8")
+        click.echo(f"Written to {output_file}", err=True)
+    else:
+        click.echo(text)
