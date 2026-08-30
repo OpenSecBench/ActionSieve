@@ -1,0 +1,19 @@
+name: Deploy to AWS with OIDC
+on: push
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
+        with:
+          role-to-assume: arn:aws:iam::123456789:role/deploy
+          aws-region: us-east-1
+      - run: aws s3 sync dist/ s3://my-bucket

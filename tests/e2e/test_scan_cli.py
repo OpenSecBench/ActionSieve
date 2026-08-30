@@ -246,6 +246,52 @@ class TestPipeToShellFindings:
         assert len(pipe_findings) == 0
 
 
+class TestCloudCredentialFindings:
+    def test_static_creds_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "static-cloud-credentials" in ids
+
+    def test_oidc_not_flagged(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "safe")],
+        )
+        data = json.loads(result.output)
+        cred_findings = [
+            f for f in data["findings"] if f["pattern_id"] == "static-cloud-credentials"
+        ]
+        assert len(cred_findings) == 0
+
+
+class TestDockerInDockerFindings:
+    def test_docker_commands_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "docker-in-docker" in ids
+
+    def test_build_action_not_flagged(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "safe")],
+        )
+        data = json.loads(result.output)
+        dind_findings = [f for f in data["findings"] if f["pattern_id"] == "docker-in-docker"]
+        assert len(dind_findings) == 0
+
+
 class TestContainerImageFindings:
     def test_unpinned_container_detected(self) -> None:
         runner = CliRunner()

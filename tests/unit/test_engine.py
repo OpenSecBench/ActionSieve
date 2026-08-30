@@ -232,6 +232,32 @@ class TestPipeToShell:
         assert len(pipe_findings) == 0
 
 
+class TestStaticCloudCredentials:
+    def test_detects_aws_keys_in_env(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/static-cloud-creds.yml")
+        cred_findings = [f for f in findings if f.pattern_id == "static-cloud-credentials"]
+        assert len(cred_findings) >= 1
+        assert cred_findings[0].severity_base == "low"
+
+    def test_oidc_auth_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/oidc-cloud-auth.yml")
+        cred_findings = [f for f in findings if f.pattern_id == "static-cloud-credentials"]
+        assert len(cred_findings) == 0
+
+
+class TestDockerInDocker:
+    def test_detects_docker_commands(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/docker-in-docker.yml")
+        dind_findings = [f for f in findings if f.pattern_id == "docker-in-docker"]
+        assert len(dind_findings) >= 1
+        assert dind_findings[0].severity_base == "medium"
+
+    def test_build_action_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/docker-build-action.yml")
+        dind_findings = [f for f in findings if f.pattern_id == "docker-in-docker"]
+        assert len(dind_findings) == 0
+
+
 class TestUnpinnedContainerImage:
     def test_detects_unpinned_tag(self) -> None:
         findings = _scan("vulnerable/.github/workflows/unpinned-container.yml")

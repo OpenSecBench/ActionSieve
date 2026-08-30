@@ -1,0 +1,18 @@
+name: Container build with action
+on: push
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: docker/build-push-action@4f58ea79222b3b9dc7c8ddd30aab37a67e809806
+        with:
+          push: false
+          tags: myapp:test

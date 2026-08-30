@@ -93,6 +93,8 @@ def _match_single_step(
     safe_inputs = _get_safe_dispatch_inputs(model) if skip_safe_inputs else set()
     findings: list[Finding] = []
 
+    matched_jobs: set[str] = set()
+
     for job in model.jobs:
         for step in job.steps:
             text = _get_block_text(step, in_block)
@@ -109,6 +111,7 @@ def _match_single_step(
                 if safe_inputs and _grep_targets_safe_input(text, grep, safe_inputs):
                     continue
 
+                matched_jobs.add(job.id)
                 findings.append(
                     _make_finding(
                         pattern=pattern,
@@ -119,6 +122,27 @@ def _match_single_step(
                         line=_find_expression_line(step, grep),
                     )
                 )
+
+    if in_block == "env":
+        for job in model.jobs:
+            if job.id in matched_jobs:
+                continue
+            job_env_text = "\n".join(f"{k}={v}" for k, v in job.env.items()) if job.env else None
+            if job_env_text is None:
+                continue
+            for grep in grep_patterns:
+                if grep in job_env_text:
+                    findings.append(
+                        _make_finding(
+                            pattern=pattern,
+                            model=model,
+                            job=job,
+                            step=job.steps[0] if job.steps else None,
+                            evidence=[f"Found '{grep}' in job env"],
+                            line=0,
+                        )
+                    )
+                    break
 
     return findings
 
@@ -195,7 +219,9 @@ def _get_block_text(step: Step, in_block: str) -> str | None:
     if in_block == "with":
         return "\n".join(str(v) for v in step.inputs.values()) if step.inputs else None
     if in_block == "env":
-        return "\n".join(str(v) for v in step.env.values()) if step.env else None
+        if not step.env:
+            return None
+        return "\n".join(f"{k}={v}" for k, v in step.env.items())
     if not in_block:
         parts = []
         if step.shell_command:
