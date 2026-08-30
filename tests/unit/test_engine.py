@@ -316,6 +316,47 @@ class TestCompositeActionScanning:
         assert len(pipe_findings) == 0
 
 
+class TestCompositeOutputTaint:
+    def test_detects_tainted_composite_output(self) -> None:
+        from actionsieve.scanner import _resolve_composite_actions
+
+        provider = GitHubProvider()
+        model = provider.parse(
+            FIXTURES / "vulnerable/.github/workflows/composite-output-injection.yml"
+        )
+        _resolve_composite_actions(model, FIXTURES / "vulnerable")
+        patterns = load_patterns(platform="github")
+        findings = match(model, patterns)
+        composite_findings = [f for f in findings if f.pattern_id == "composite-output-injection"]
+        assert len(composite_findings) >= 1
+        assert composite_findings[0].severity_base == "high"
+
+    def test_safe_composite_output_no_finding(self) -> None:
+        from actionsieve.scanner import _resolve_composite_actions
+
+        provider = GitHubProvider()
+        model = provider.parse(FIXTURES / "safe/.github/workflows/composite-output-safe.yml")
+        _resolve_composite_actions(model, FIXTURES / "safe")
+        patterns = load_patterns(platform="github")
+        findings = match(model, patterns)
+        composite_findings = [f for f in findings if f.pattern_id == "composite-output-injection"]
+        assert len(composite_findings) == 0
+
+    def test_taint_propagated_to_caller_step(self) -> None:
+        from actionsieve.scanner import _resolve_composite_actions
+
+        provider = GitHubProvider()
+        model = provider.parse(
+            FIXTURES / "vulnerable/.github/workflows/composite-output-injection.yml"
+        )
+        _resolve_composite_actions(model, FIXTURES / "vulnerable")
+        info_step = next(s for j in model.jobs for s in j.steps if s.id == "info")
+        assert "pr_title" in info_step.outputs_written
+        tainted = [e for e in info_step.expressions if e.is_tainted]
+        assert len(tainted) >= 1
+        assert tainted[0].context_path == "github.event.pull_request.title"
+
+
 class TestForkCacheWrite:
     def test_detects_cache_in_fork_reachable(self) -> None:
         findings = _scan("vulnerable/.github/workflows/fork-cache-write.yml")

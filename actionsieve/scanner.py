@@ -179,9 +179,11 @@ def _resolve_composite_actions(model: WorkflowModel, repo_path: Path, depth: int
             local_path = _local_action_path(ref)
             if local_path is None:
                 continue
-            steps = _parse_composite_action(repo_path, local_path)
+            steps, output_exprs = _parse_composite_action(repo_path, local_path)
             if steps:
                 extra.extend(steps)
+            if output_exprs:
+                _propagate_composite_taint(step, output_exprs)
         if extra:
             base = len(job.steps)
             for i, s in enumerate(extra):
@@ -199,29 +201,31 @@ def _local_action_path(ref: ComponentRef) -> str | None:
     return None
 
 
-def _parse_composite_action(repo_path: Path, action_path: str) -> list[Step]:
+def _parse_composite_action(
+    repo_path: Path, action_path: str
+) -> tuple[list[Step], dict[str, str]]:
     for filename in ("action.yml", "action.yaml"):
         candidate = repo_path / action_path / filename
         if candidate.is_file():
             return _read_composite_steps(candidate, action_path)
-    return []
+    return [], {}
 
 
-def _read_composite_steps(path: Path, action_path: str) -> list[Step]:
+def _read_composite_steps(path: Path, action_path: str) -> tuple[list[Step], dict[str, str]]:
     if path.stat().st_size > MAX_COMPOSITE_FILE_SIZE:
-        return []
+        return [], {}
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (yaml.YAMLError, OSError):
-        return []
+        return [], {}
     if not isinstance(data, dict):
-        return []
+        return [], {}
     runs = data.get("runs", {})
     if not isinstance(runs, dict) or runs.get("using") != "composite":
-        return []
+        return [], {}
     raw_steps = runs.get("steps", [])
     if not isinstance(raw_steps, list):
-        return []
+        return [], {}
 
     steps: list[Step] = []
     lines = path.read_text(encoding="utf-8").splitlines()
@@ -231,7 +235,9 @@ def _read_composite_steps(path: Path, action_path: str) -> list[Step]:
         step = _composite_step(i, s, action_path, lines)
         if step:
             steps.append(step)
-    return steps
+
+    output_exprs = _parse_composite_outputs(data)
+    return steps, output_exprs
 
 
 def _composite_step(
@@ -248,6 +254,38 @@ def _composite_step(
             expressions=expressions,
         )
     return None
+
+
+def _parse_composite_outputs(data: dict[str, Any]) -> dict[str, str]:
+    raw_outputs = data.get("outputs", {})
+    if not isinstance(raw_outputs, dict):
+        return {}
+    result: dict[str, str] = {}
+    for name, spec in raw_outputs.items():
+        val = spec.get("value", "") if isinstance(spec, dict) else str(spec) if spec else ""
+        if val:
+            result[str(name)] = str(val)
+    return result
+
+
+def _propagate_composite_taint(step: Step, output_exprs: dict[str, str]) -> None:
+    from actionsieve.providers.github_parse import TAINTED_CONTEXT_PREFIXES
+
+    for output_name, value_expr in output_exprs.items():
+        for m in re.finditer(r"\$\{\{\s*(.*?)\s*\}\}", value_expr):
+            ctx = m.group(1).strip()
+            if any(ctx.startswith(p) for p in TAINTED_CONTEXT_PREFIXES):
+                step.outputs_written.append(output_name)
+                step.expressions.append(
+                    Expression(
+                        raw=m.group(0),
+                        context_path=ctx,
+                        location="composite_output",
+                        is_in_shell=False,
+                        is_tainted=True,
+                        line=0,
+                    )
+                )
 
 
 def _extract_composite_expressions(text: str) -> list[Expression]:

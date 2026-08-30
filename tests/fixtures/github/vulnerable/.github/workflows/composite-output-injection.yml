@@ -1,0 +1,11 @@
+name: PR Summary
+on: pull_request_target
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/pr-info
+        id: info
+      - run: echo "PR title is ${{ steps.info.outputs.pr_title }}"

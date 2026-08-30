@@ -1,0 +1,15 @@
+name: Build Summary
+on: push
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/build-info
+        id: info
+      - run: echo "Run ${{ steps.info.outputs.run_id }}"

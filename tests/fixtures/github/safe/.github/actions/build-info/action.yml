@@ -1,0 +1,12 @@
+name: Build Info
+description: Extract build metadata
+outputs:
+  run_id:
+    value: ${{ github.run_id }}
+  sha:
+    value: ${{ github.sha }}
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: echo "Build info collected"

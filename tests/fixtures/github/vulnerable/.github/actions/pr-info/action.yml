@@ -1,0 +1,12 @@
+name: PR Info
+description: Extract pull request metadata
+outputs:
+  pr_title:
+    value: ${{ github.event.pull_request.title }}
+  pr_number:
+    value: ${{ github.event.pull_request.number }}
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: echo "Extracted PR info"

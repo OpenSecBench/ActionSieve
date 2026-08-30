@@ -169,6 +169,32 @@ patterns:
     tags: [injection, chain, fork-script, output]
     status: documented
 
+  - id: composite-output-injection
+    title: Composite action output passes tainted context to caller shell
+    description: |
+      A composite action declares an output whose value references a
+      tainted context (e.g. github.event.pull_request.title). The calling
+      workflow interpolates that output via ${{ steps.X.outputs.Y }} in a
+      run: block. The taint launders through the composite output boundary.
+    platforms: [github]
+    trigger: [pull_request, pull_request_target]
+    trust_boundary: attacker_controlled_event_data -> composite_output -> shell_execution
+    attacker_model: fork_pr
+    impact: [rce]
+    severity_base: high
+    requires_self_hosted: false
+    detection:
+      type: cross_step
+      grep_patterns:
+        - 'steps.'
+        - '.outputs.'
+    mitigations:
+      - Pass composite outputs through env vars instead of ${{ }} interpolation
+      - Sanitize tainted context before setting as composite output value
+    cwe: CWE-78
+    tags: [injection, chain, composite, output]
+    status: documented
+
   - id: dispatch-input-injection
     title: workflow_dispatch input interpolation in shell
     description: |
