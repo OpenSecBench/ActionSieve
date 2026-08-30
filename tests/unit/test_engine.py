@@ -301,6 +301,24 @@ class TestCompositeActionScanning:
         assert len(pipe_findings) == 0
 
 
+class TestForkCacheWrite:
+    def test_detects_cache_in_fork_reachable(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/fork-cache-write.yml")
+        cache_findings = [f for f in findings if f.pattern_id == "fork-pr-cache-write"]
+        assert len(cache_findings) >= 1
+        assert cache_findings[0].severity_base == "medium"
+
+    def test_push_only_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/cache-push-only.yml")
+        cache_findings = [f for f in findings if f.pattern_id == "fork-pr-cache-write"]
+        assert len(cache_findings) == 0
+
+    def test_restore_only_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/cache-restore-only.yml")
+        cache_findings = [f for f in findings if f.pattern_id == "fork-pr-cache-write"]
+        assert len(cache_findings) == 0
+
+
 class TestNoFalsePositivesOnSafe:
     def test_env_indirection(self) -> None:
         findings = _scan("safe/.github/workflows/env-indirection.yml")

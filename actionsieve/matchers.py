@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from actionsieve.engine import Finding
-    from actionsieve.model import Job, WorkflowModel
+    from actionsieve.model import Job, Step, WorkflowModel
 
     MakeFinding = Callable[..., Finding]
 
@@ -31,6 +31,7 @@ def match_structural(
         "missing-permissions-block": _match_missing_permissions,
         "checkout-persists-credentials": _match_checkout_persists_creds,
         "unpinned-container-image": _match_unpinned_image,
+        "fork-pr-cache-write": _match_fork_cache_write,
     }
 
     matcher = dispatch.get(pid)
@@ -235,18 +236,11 @@ def _match_circleci_dynamic_config(
 
 
 def _match_missing_permissions(
-    model: WorkflowModel,
-    pattern: dict[str, Any],
-    make_finding: MakeFinding,
+    model: WorkflowModel, pattern: dict[str, Any], make_finding: MakeFinding
 ) -> list[Finding]:
-    if model.platform != "github":
+    if model.platform != "github" or model.permissions is not None or not model.jobs:
         return []
-    if model.permissions is not None:
-        return []
-    all_jobs_have_perms = model.jobs and all(j.permissions is not None for j in model.jobs)
-    if all_jobs_have_perms:
-        return []
-    if not model.jobs:
+    if all(j.permissions is not None for j in model.jobs):
         return []
     return [
         make_finding(
@@ -261,33 +255,25 @@ def _match_missing_permissions(
 
 
 def _match_checkout_persists_creds(
-    model: WorkflowModel,
-    pattern: dict[str, Any],
-    make_finding: MakeFinding,
+    model: WorkflowModel, pattern: dict[str, Any], make_finding: MakeFinding
 ) -> list[Finding]:
     if model.platform != "github":
         return []
-    findings: list[Finding] = []
-    for job in model.jobs:
-        for step in job.steps:
-            if step.action_ref is None or "checkout" not in step.action_ref.name:
-                continue
-            persist = step.inputs.get("persist-credentials", "")
-            if persist.lower() == "false":
-                continue
-            findings.append(
-                make_finding(
-                    pattern=pattern,
-                    model=model,
-                    job=job,
-                    step=step,
-                    evidence=[
-                        "actions/checkout without persist-credentials: false",
-                    ],
-                    line=step.action_ref.line,
-                )
-            )
-    return findings
+    return [
+        make_finding(
+            pattern=pattern,
+            model=model,
+            job=job,
+            step=step,
+            evidence=["actions/checkout without persist-credentials: false"],
+            line=step.action_ref.line,
+        )
+        for job in model.jobs
+        for step in job.steps
+        if step.action_ref
+        and "checkout" in step.action_ref.name
+        and step.inputs.get("persist-credentials", "").lower() != "false"
+    ]
 
 
 def _match_structural_checks(
@@ -296,52 +282,31 @@ def _match_structural_checks(
     checks: list[dict[str, Any]],
     make_finding: MakeFinding,
 ) -> list[Finding]:
-    findings: list[Finding] = []
-    for job in model.jobs:
-        if _all_checks_pass(model, job, checks):
-            findings.append(
-                make_finding(
-                    pattern=pattern,
-                    model=model,
-                    job=job,
-                    step=None,
-                    evidence=_describe_checks(model, job, checks),
-                    line=0,
-                )
-            )
-    return findings
+    return [
+        make_finding(
+            pattern=pattern,
+            model=model,
+            job=job,
+            step=None,
+            evidence=_describe_checks(model, job, checks),
+            line=0,
+        )
+        for job in model.jobs
+        if all(_check_passes(model, job, c) for c in checks)
+    ]
 
 
-def _all_checks_pass(
-    model: WorkflowModel,
-    job: Job,
-    checks: list[dict[str, Any]],
-) -> bool:
-    return all(_check_passes(model, job, check) for check in checks)
-
-
-def _check_passes(
-    model: WorkflowModel,
-    job: Job,
-    check: dict[str, Any],
-) -> bool:
+def _check_passes(model: WorkflowModel, job: Job, check: dict[str, Any]) -> bool:
     if "trigger_includes" in check:
         return any(t.raw_event == check["trigger_includes"] for t in model.triggers)
-
     if "has_step" in check:
         return _has_step_check(job, check["has_step"])
-
     if "job_has_secrets" in check:
-        if check["job_has_secrets"]:
-            return len(job.secrets_referenced) > 0
-        return len(job.secrets_referenced) == 0
-
+        return bool(job.secrets_referenced) is bool(check["job_has_secrets"])
     if "runner_is_self_hosted" in check:
         return bool(job.runner.is_self_hosted == check["runner_is_self_hosted"])
-
     if "fork_reachable" in check:
         return bool(any(t.is_fork_reachable for t in model.triggers) == check["fork_reachable"])
-
     return False
 
 
@@ -363,25 +328,20 @@ def _has_step_check(job: Job, spec: dict[str, Any]) -> bool:
     return False
 
 
-def _describe_checks(
-    model: WorkflowModel,
-    job: Job,
-    checks: list[dict[str, Any]],
-) -> list[str]:
-    evidence: list[str] = []
-    for check in checks:
-        if "trigger_includes" in check:
-            evidence.append(f"Trigger includes {check['trigger_includes']}")
-        if "has_step" in check:
-            evidence.append(f"Job has step matching {check['has_step']}")
-        if "job_has_secrets" in check:
-            evidence.append(f"Job references secrets: {job.secrets_referenced}")
-        if "runner_is_self_hosted" in check:
-            evidence.append(f"Runner is self-hosted: {job.runner.is_self_hosted}")
-        if "fork_reachable" in check:
-            reachable = any(t.is_fork_reachable for t in model.triggers)
-            evidence.append(f"Fork reachable: {reachable}")
-    return evidence
+def _describe_checks(model: WorkflowModel, job: Job, checks: list[dict[str, Any]]) -> list[str]:
+    ev: list[str] = []
+    for c in checks:
+        if "trigger_includes" in c:
+            ev.append(f"Trigger includes {c['trigger_includes']}")
+        if "has_step" in c:
+            ev.append(f"Job has step matching {c['has_step']}")
+        if "job_has_secrets" in c:
+            ev.append(f"Job references secrets: {job.secrets_referenced}")
+        if "runner_is_self_hosted" in c:
+            ev.append(f"Runner is self-hosted: {job.runner.is_self_hosted}")
+        if "fork_reachable" in c:
+            ev.append(f"Fork reachable: {any(t.is_fork_reachable for t in model.triggers)}")
+    return ev
 
 
 def _match_unpinned_image(
@@ -398,4 +358,31 @@ def _match_unpinned_image(
         )
         for job in model.jobs
         if job.image and "@sha256:" not in job.image
+    ]
+
+
+def _is_cache_write(step: Step) -> bool:
+    if step.action_ref:
+        name = step.action_ref.name.lower()
+        return "cache" in name and "restore" not in step.action_ref.raw.lower()
+    return step.name == "save_cache"
+
+
+def _match_fork_cache_write(
+    model: WorkflowModel, pattern: dict[str, Any], make_finding: MakeFinding
+) -> list[Finding]:
+    if not any(t.is_fork_reachable for t in model.triggers):
+        return []
+    return [
+        make_finding(
+            pattern=pattern,
+            model=model,
+            job=job,
+            step=step,
+            evidence=[f"Cache write in fork-reachable workflow: {step.name or step.action_ref}"],
+            line=step.action_ref.line if step.action_ref else 0,
+        )
+        for job in model.jobs
+        for step in job.steps
+        if _is_cache_write(step)
     ]

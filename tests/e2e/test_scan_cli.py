@@ -316,6 +316,28 @@ class TestContainerImageFindings:
         assert len(img_findings) == 0
 
 
+class TestForkCacheWriteFindings:
+    def test_fork_cache_write_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "fork-pr-cache-write" in ids
+
+    def test_push_only_cache_not_flagged(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "safe")],
+        )
+        data = json.loads(result.output)
+        cache_findings = [f for f in data["findings"] if f["pattern_id"] == "fork-pr-cache-write"]
+        assert len(cache_findings) == 0
+
+
 class TestTrustRepoProfile:
     def _make_repo(self, tmp_path: Path) -> Path:
         wf_dir = tmp_path / ".github" / "workflows"
