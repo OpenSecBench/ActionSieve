@@ -1,4 +1,4 @@
-name: Process PR (safe)
+name: Process PR (random delimiter)
 on: pull_request
 
 jobs:
@@ -6,4 +6,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Processing PR #${{ github.event.pull_request.number }}"
+      - name: Get description
+        id: desc
+        run: |
+          DELIMITER=$(uuidgen)
+          echo "desc<<$DELIMITER" >> "$GITHUB_OUTPUT"
+          cat README.md >> "$GITHUB_OUTPUT"
+          echo "$DELIMITER" >> "$GITHUB_OUTPUT"
+      - run: echo "${{ steps.desc.outputs.desc }}"

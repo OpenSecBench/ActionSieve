@@ -26,10 +26,8 @@ patterns:
       grep_patterns:
         - '<<EOF'
         - '<<HEREDOC'
-        - ">> $GITHUB_OUTPUT"
-        - ">> $GITHUB_ENV"
-        - '>> "$GITHUB_OUTPUT"'
-        - '>> "$GITHUB_ENV"'
+        - '<<DELIMITER'
+        - '<<DELIM'
       check_for: |
         Hardcoded delimiters with untrusted data written between them.
         Safe: random delimiter per write (uuidgen).
