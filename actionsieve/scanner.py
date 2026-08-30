@@ -82,13 +82,14 @@ def scan(
         if diff_base:
             files = _filter_changed_files(repo_path, files, diff_base)
 
+        resolved_actions: set[str] = set()
         for file_path in files:
             try:
                 model = provider.parse(file_path)
             except ParseError:
                 continue
 
-            _resolve_composite_actions(model, repo_path)
+            _resolve_composite_actions(model, repo_path, resolved_actions)
             findings = engine.match(model, patterns)
 
             for finding in findings:
@@ -96,6 +97,23 @@ def scan(
 
             all_findings.extend(findings)
             models.append(model)
+
+        if hasattr(provider, "find_action_files"):
+            action_files = provider.find_action_files(repo_path)
+            if diff_base:
+                action_files = _filter_changed_files(repo_path, action_files, diff_base)
+            for file_path in action_files:
+                if str(file_path.parent.resolve()) in resolved_actions:
+                    continue
+                action_model = _parse_standalone_action(file_path, provider.name)
+                if action_model is None:
+                    continue
+                _resolve_composite_actions(action_model, repo_path)
+                findings = engine.match(action_model, patterns)
+                for finding in findings:
+                    finding.severity_base = compute_static(finding, action_model)
+                all_findings.extend(findings)
+                models.append(action_model)
 
     if online:
         all_findings.extend(_run_pin_checks(models, token))
@@ -167,28 +185,36 @@ MAX_COMPOSITE_DEPTH = 3
 MAX_COMPOSITE_FILE_SIZE = 1_048_576
 
 
-def _resolve_composite_actions(model: WorkflowModel, repo_path: Path, depth: int = 0) -> None:
-    if depth >= MAX_COMPOSITE_DEPTH:
-        return
+def _resolve_composite_actions(
+    model: WorkflowModel, repo_path: Path, resolved: set[str] | None = None
+) -> set[str]:
+    if resolved is None:
+        resolved = set()
     for job in model.jobs:
-        extra: list[Step] = []
-        for step in job.steps:
-            ref = step.action_ref
-            if ref is None:
-                continue
-            local_path = _local_action_path(ref)
-            if local_path is None:
-                continue
-            steps, output_exprs = _parse_composite_action(repo_path, local_path)
-            if steps:
-                extra.extend(steps)
-            if output_exprs:
-                _propagate_composite_taint(step, output_exprs)
-        if extra:
+        start = 0
+        for _depth in range(MAX_COMPOSITE_DEPTH):
+            extra: list[Step] = []
+            for step in job.steps[start:]:
+                ref = step.action_ref
+                if ref is None:
+                    continue
+                local_path = _local_action_path(ref)
+                if local_path is None:
+                    continue
+                resolved.add(str((repo_path / local_path).resolve()))
+                steps, output_exprs = _parse_composite_action(repo_path, local_path)
+                if steps:
+                    extra.extend(steps)
+                if output_exprs:
+                    _propagate_composite_taint(step, output_exprs)
+            if not extra:
+                break
             base = len(job.steps)
             for i, s in enumerate(extra):
                 s.index = base + i
+            start = base
             job.steps.extend(extra)
+    return resolved
 
 
 def _local_action_path(ref: ComponentRef) -> str | None:
@@ -253,6 +279,17 @@ def _composite_step(
             shell_command=shell_command,
             expressions=expressions,
         )
+    uses = data.get("uses")
+    if isinstance(uses, str) and uses:
+        from actionsieve.providers.github_parse import parse_uses
+
+        ref = parse_uses(uses, lines)
+        return Step(
+            index=index,
+            type="action",
+            name=data.get("name") or uses,
+            action_ref=ref,
+        )
     return None
 
 
@@ -286,6 +323,53 @@ def _propagate_composite_taint(step: Step, output_exprs: dict[str, str]) -> None
                         line=0,
                     )
                 )
+
+
+def _parse_standalone_action(file_path: Path, platform: str) -> WorkflowModel | None:
+    from actionsieve.model import Job, Permissions, Trigger, WorkflowModel, make_runner
+
+    if file_path.stat().st_size > MAX_COMPOSITE_FILE_SIZE:
+        return None
+    try:
+        data = yaml.safe_load(file_path.read_text(encoding="utf-8"))
+    except (yaml.YAMLError, OSError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    runs = data.get("runs", {})
+    if not isinstance(runs, dict) or runs.get("using") != "composite":
+        return None
+
+    action_path = str(file_path.parent)
+    lines = file_path.read_text(encoding="utf-8").splitlines()
+    raw_steps = runs.get("steps", [])
+    if not isinstance(raw_steps, list):
+        return None
+
+    steps: list[Step] = []
+    for i, s in enumerate(raw_steps):
+        if not isinstance(s, dict):
+            continue
+        step = _composite_step(i, s, action_path, lines)
+        if step:
+            steps.append(step)
+
+    if not steps:
+        return None
+
+    job = Job(
+        id="composite",
+        runner=make_runner("ubuntu-latest"),
+        steps=steps,
+    )
+    return WorkflowModel(
+        platform=platform,
+        file_path=str(file_path),
+        raw=data,
+        triggers=[Trigger(event="composite", raw_event="composite")],
+        permissions=Permissions(raw={}),
+        jobs=[job],
+    )
 
 
 def _extract_composite_expressions(text: str) -> list[Expression]:

@@ -346,6 +346,42 @@ class TestCompositeActionScanning:
         assert len(pipe_findings) == 0
 
 
+class TestCompositeChainResolution:
+    def test_detects_injection_through_nested_composite(self) -> None:
+        from actionsieve.scanner import _resolve_composite_actions
+
+        provider = GitHubProvider()
+        model = provider.parse(FIXTURES / "vulnerable/.github/workflows/composite-chain.yml")
+        _resolve_composite_actions(model, FIXTURES / "vulnerable")
+        patterns = load_patterns(platform="github")
+        findings = match(model, patterns)
+        expr_findings = [f for f in findings if f.pattern_id == "expr-injection-run"]
+        assert len(expr_findings) >= 1
+        assert any("github.head_ref" in e for f in expr_findings for e in f.evidence)
+
+    def test_nested_steps_appended_to_job(self) -> None:
+        from actionsieve.scanner import _resolve_composite_actions
+
+        provider = GitHubProvider()
+        model = provider.parse(FIXTURES / "vulnerable/.github/workflows/composite-chain.yml")
+        _resolve_composite_actions(model, FIXTURES / "vulnerable")
+        job = model.jobs[0]
+        shell_steps = [s for s in job.steps if s.type == "shell"]
+        assert len(shell_steps) >= 1
+        assert any("github.head_ref" in (s.shell_command or "") for s in shell_steps)
+
+    def test_safe_chain_no_injection(self) -> None:
+        from actionsieve.scanner import _resolve_composite_actions
+
+        provider = GitHubProvider()
+        model = provider.parse(FIXTURES / "safe/.github/workflows/composite-action-safe.yml")
+        _resolve_composite_actions(model, FIXTURES / "safe")
+        patterns = load_patterns(platform="github")
+        findings = match(model, patterns)
+        expr_findings = [f for f in findings if f.pattern_id == "expr-injection-run"]
+        assert len(expr_findings) == 0
+
+
 class TestCompositeOutputTaint:
     def test_detects_tainted_composite_output(self) -> None:
         from actionsieve.scanner import _resolve_composite_actions
@@ -477,6 +513,51 @@ class TestIssueCommentForkCheckout:
         findings = _scan("safe/.github/workflows/issue-comment-safe.yml")
         ic_findings = [f for f in findings if f.pattern_id == "issue-comment-fork-checkout"]
         assert len(ic_findings) == 0
+
+
+class TestStandaloneActionScanning:
+    def test_detects_injection_in_unreferenced_action(self) -> None:
+        from actionsieve.scanner import _parse_standalone_action
+
+        model = _parse_standalone_action(
+            FIXTURES / "vulnerable/.github/actions/standalone-vuln/action.yml", "github"
+        )
+        assert model is not None
+        patterns = load_patterns(platform="github")
+        findings = match(model, patterns)
+        expr_findings = [f for f in findings if f.pattern_id == "expr-injection-run"]
+        assert len(expr_findings) >= 1
+
+    def test_standalone_no_permissions_finding(self) -> None:
+        from actionsieve.scanner import _parse_standalone_action
+
+        model = _parse_standalone_action(
+            FIXTURES / "vulnerable/.github/actions/standalone-vuln/action.yml", "github"
+        )
+        assert model is not None
+        patterns = load_patterns(platform="github")
+        findings = match(model, patterns)
+        perm_findings = [f for f in findings if f.pattern_id == "missing-permissions-block"]
+        assert len(perm_findings) == 0
+
+    def test_standalone_skips_non_composite(self) -> None:
+        from actionsieve.scanner import _parse_standalone_action
+
+        model = _parse_standalone_action(
+            FIXTURES / "vulnerable/.github/workflows/expression-injection.yml", "github"
+        )
+        assert model is None
+
+    def test_dedup_with_resolved_composites(self) -> None:
+        from actionsieve.scanner import _resolve_composite_actions
+
+        provider = GitHubProvider()
+        model = provider.parse(FIXTURES / "vulnerable/.github/workflows/composite-chain.yml")
+        resolved = _resolve_composite_actions(model, FIXTURES / "vulnerable")
+        action_a_path = str((FIXTURES / "vulnerable/.github/actions/action-a").resolve())
+        action_b_path = str((FIXTURES / "vulnerable/.github/actions/action-b").resolve())
+        assert action_a_path in resolved
+        assert action_b_path in resolved
 
 
 class TestNoFalsePositivesOnSafe:

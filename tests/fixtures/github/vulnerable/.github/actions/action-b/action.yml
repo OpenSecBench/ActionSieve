@@ -1,0 +1,7 @@
+name: Action B
+description: Inner composite with injection
+runs:
+  using: composite
+  steps:
+    - run: echo "${{ github.head_ref }}"
+      shell: bash

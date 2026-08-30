@@ -1,0 +1,6 @@
+name: Safe chain A
+description: Wrapper that delegates to safe-chain-b
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/safe-chain-b

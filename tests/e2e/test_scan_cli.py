@@ -531,6 +531,44 @@ class TestOnlineFlag:
         assert result.exit_code == 0
 
 
+class TestCompositeChainFindings:
+    def test_nested_composite_injection_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        chain_findings = [
+            f
+            for f in data["findings"]
+            if f["pattern_id"] == "expr-injection-run" and "composite-chain" in f["file_path"]
+        ]
+        assert len(chain_findings) >= 1
+
+    def test_standalone_action_injection_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        standalone_findings = [f for f in data["findings"] if "standalone-vuln" in f["file_path"]]
+        assert len(standalone_findings) >= 1
+
+    def test_resolved_composites_not_duplicated(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        action_b_findings = [
+            f for f in data["findings"] if "action-b/action.yml" in f["file_path"]
+        ]
+        assert len(action_b_findings) == 0
+
+
 class TestVersionFlag:
     def test_version(self) -> None:
         runner = CliRunner()

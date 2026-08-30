@@ -1,0 +1,6 @@
+name: Action A
+description: Wrapper that delegates to action-b
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/action-b

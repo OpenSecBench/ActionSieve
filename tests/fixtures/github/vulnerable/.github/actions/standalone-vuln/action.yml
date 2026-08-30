@@ -1,0 +1,7 @@
+name: Standalone vulnerable action
+description: Published action with injection, no local workflow references it
+runs:
+  using: composite
+  steps:
+    - run: echo "${{ github.event.pull_request.title }}"
+      shell: bash

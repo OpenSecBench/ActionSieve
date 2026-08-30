@@ -1,0 +1,7 @@
+name: Safe chain B
+description: Inner composite with safe operations only
+runs:
+  using: composite
+  steps:
+    - run: echo "build complete"
+      shell: bash

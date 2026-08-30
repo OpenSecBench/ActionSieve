@@ -66,6 +66,12 @@ class GitHubProvider:
             files.extend(sorted(workflows_dir.glob(pattern)))
         return files
 
+    def find_action_files(self, repo_path: Path) -> list[Path]:
+        files: list[Path] = []
+        for name in ("action.yml", "action.yaml"):
+            files.extend(sorted(repo_path.rglob(name)))
+        return files
+
     def parse(self, file_path: Path) -> WorkflowModel:
         if file_path.stat().st_size > MAX_FILE_SIZE:
             raise ParseError(f"File exceeds {MAX_FILE_SIZE} byte limit: {file_path}")
