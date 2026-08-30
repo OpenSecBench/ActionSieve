@@ -1,0 +1,11 @@
+name: Check changed files
+on: pull_request
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: tj-actions/changed-files@v35
+        id: changed
+      - run: echo "${{ steps.changed.outputs.all_changed_files }}"
