@@ -36,10 +36,11 @@ class Provider(Protocol):
 
 
 def _get_providers() -> list[Provider]:
+    from actionsieve.providers.azure import AzureProvider
     from actionsieve.providers.github import GitHubProvider
     from actionsieve.providers.gitlab import GitLabProvider
 
-    return [GitHubProvider(), GitLabProvider()]
+    return [GitHubProvider(), GitLabProvider(), AzureProvider()]
 
 
 def auto_detect(repo_path: Path) -> list[Provider]:

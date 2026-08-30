@@ -1,0 +1,27 @@
+trigger:
+  - main
+
+variables:
+  buildConfiguration: Release
+
+stages:
+  - stage: Build
+    jobs:
+      - job: BuildJob
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+          - script: |
+              echo "Building configuration $(buildConfiguration)"
+              dotnet build --configuration $(buildConfiguration)
+            displayName: Build
+
+  - stage: Test
+    jobs:
+      - job: TestJob
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - script: dotnet test
+            displayName: Run tests

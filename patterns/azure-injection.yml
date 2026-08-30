@@ -1,0 +1,31 @@
+patterns:
+
+  - id: azure-variable-injection
+    title: Pipeline variable injection in script block
+    description: |
+      Untrusted Azure Pipelines variables (source branch name, commit
+      message, requestor identity) are interpolated into script blocks
+      via $(Variable) macro syntax. Azure expands macros before shell
+      execution, enabling command injection through attacker-controlled
+      values like branch names or commit messages.
+    platforms: [azure]
+    trigger: [pr, push]
+    trust_boundary: untrusted_pipeline_variable -> shell_execution
+    attacker_model: fork_pr
+    impact: [rce]
+    severity_base: high
+    detection:
+      type: single_step
+      in_block: run
+      grep_patterns:
+        - '$(Build.SourceBranchName)'
+        - '$(Build.SourceVersionMessage)'
+        - '$(Build.RequestedFor)'
+        - '$(Build.RequestedForEmail)'
+        - '$(System.PullRequest.SourceBranch)'
+    cwe: CWE-78
+    tags: [injection, azure]
+    mitigations:
+      - Use template expressions ${{ }} for compile-time evaluation
+      - Pass variables through environment variables with env mapping
+      - Validate inputs before interpolation

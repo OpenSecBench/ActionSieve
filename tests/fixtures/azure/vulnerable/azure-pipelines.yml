@@ -1,0 +1,45 @@
+trigger:
+  - main
+
+pr:
+  - main
+
+variables:
+  - name: secretToken
+    value: $(MY_SECRET_TOKEN)
+
+stages:
+  - stage: Build
+    jobs:
+      - job: BuildJob
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+          - script: |
+              echo "Building branch $(Build.SourceBranchName)"
+              echo "Commit: $(Build.SourceVersionMessage)"
+            displayName: Build
+
+  - stage: Test
+    jobs:
+      - job: TestJob
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - script: echo "Testing $(Build.RequestedFor)"
+            displayName: Test
+
+  - stage: Deploy
+    jobs:
+      - deployment: DeployProd
+        pool:
+          name: self-hosted-pool
+        steps:
+          - script: |
+              curl -H "Authorization: Bearer $(secretToken)" https://deploy.example.com
+            displayName: Deploy to production
+          - task: AzureWebApp@1
+            inputs:
+              appName: myapp
+              package: $(Build.ArtifactStagingDirectory)/**/*.zip
