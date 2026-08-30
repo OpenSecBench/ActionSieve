@@ -302,6 +302,19 @@ class TestDockerSocketConfig:
         ]
         assert len(dind_findings) >= 1
 
+    def test_rootless_dind_lowers_severity(self) -> None:
+        from actionsieve.providers.gitlab import GitLabProvider
+
+        gitlab_fixtures = Path(__file__).parent.parent / "fixtures" / "gitlab"
+        provider = GitLabProvider()
+        model = provider.parse(gitlab_fixtures / "safe-dind-rootless" / ".gitlab-ci.yml")
+        patterns = load_patterns(platform="gitlab")
+        findings = match(model, patterns)
+        socket_findings = [f for f in findings if f.pattern_id == "docker-socket-config"]
+        assert len(socket_findings) == 1
+        assert socket_findings[0].severity_base == "info"
+        assert any("Rootless" in e for e in socket_findings[0].evidence)
+
 
 class TestUnpinnedContainerImage:
     def test_detects_unpinned_tag(self) -> None:
@@ -405,6 +418,11 @@ class TestCompositeOutputTaint:
         _resolve_composite_actions(model, FIXTURES / "safe")
         patterns = load_patterns(platform="github")
         findings = match(model, patterns)
+        composite_findings = [f for f in findings if f.pattern_id == "composite-output-injection"]
+        assert len(composite_findings) == 0
+
+    def test_no_false_positive_on_regular_step_output(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/fork-script-output.yml")
         composite_findings = [f for f in findings if f.pattern_id == "composite-output-injection"]
         assert len(composite_findings) == 0
 

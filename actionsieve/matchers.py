@@ -562,31 +562,36 @@ def _match_docker_socket_config(
     findings: list[Finding] = []
     wf_docker_host = model.env.get("DOCKER_HOST", "")
     for job in model.jobs:
+        rootless = _has_rootless_dind(model, job)
         docker_host = job.env.get("DOCKER_HOST", "") or wf_docker_host
         if docker_host and any(p in docker_host for p in _DOCKER_SOCKET_PATTERNS):
-            findings.append(
-                make_finding(
-                    pattern=pattern,
-                    model=model,
-                    job=job,
-                    step=None,
-                    evidence=[f"DOCKER_HOST={docker_host} exposes Docker daemon"],
-                    line=0,
-                )
+            finding = make_finding(
+                pattern=pattern,
+                model=model,
+                job=job,
+                step=None,
+                evidence=[f"DOCKER_HOST={docker_host} exposes Docker daemon"],
+                line=0,
             )
+            if rootless:
+                finding.severity_base = "info"
+                finding.evidence.append("Rootless DinD service detected — reduced risk")
+            findings.append(finding)
         for step in job.steps:
             for key, val in step.env.items():
                 if key.upper() == "DOCKER_HOST" and any(p in val for p in _DOCKER_SOCKET_PATTERNS):
-                    findings.append(
-                        make_finding(
-                            pattern=pattern,
-                            model=model,
-                            job=job,
-                            step=step,
-                            evidence=[f"DOCKER_HOST={val} exposes Docker daemon"],
-                            line=0,
-                        )
+                    finding = make_finding(
+                        pattern=pattern,
+                        model=model,
+                        job=job,
+                        step=step,
+                        evidence=[f"DOCKER_HOST={val} exposes Docker daemon"],
+                        line=0,
                     )
+                    if rootless:
+                        finding.severity_base = "info"
+                        finding.evidence.append("Rootless DinD service detected — reduced risk")
+                    findings.append(finding)
         if job.image and any(job.image.startswith(img) for img in _DIND_IMAGES):
             findings.append(
                 make_finding(
@@ -599,6 +604,20 @@ def _match_docker_socket_config(
                 )
             )
     return findings
+
+
+def _has_rootless_dind(model: WorkflowModel, job: Job) -> bool:
+    job_raw = model.raw.get(job.id, {})
+    if not isinstance(job_raw, dict):
+        return False
+    services = job_raw.get("services", [])
+    if not isinstance(services, list):
+        return False
+    for svc in services:
+        img = svc if isinstance(svc, str) else svc.get("name", "") if isinstance(svc, dict) else ""
+        if "rootless" in str(img).lower():
+            return True
+    return False
 
 
 _HEX = frozenset("0123456789abcdef")

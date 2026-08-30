@@ -1,0 +1,9 @@
+build:
+  image: docker:27
+  services:
+    - docker:27-dind-rootless
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_HOST: tcp://docker:2376
+  script:
+    - docker build -t myapp:latest .
