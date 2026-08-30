@@ -35,7 +35,7 @@
             { "const": "all" },
             {
               "type": "array",
-              "items": { "enum": ["github", "gitlab", "azure", "jenkins"] },
+              "items": { "enum": ["github", "gitlab", "azure", "jenkins", "circleci", "bitbucket", "buildkite", "drone", "codebuild", "cloudbuild"] },
               "minItems": 1,
               "uniqueItems": true
             }

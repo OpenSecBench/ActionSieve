@@ -163,6 +163,48 @@
 - [ ] Pattern catalog versioning and update mechanism
 - [ ] Interactive TUI for triaging search results (textual or rich)
 
+## Phase 7: Additional platforms
+
+### CircleCI
+- [ ] `providers/circleci.py` — detect `.circleci/config.yml`, parse to WorkflowModel
+- [ ] Orb references as ComponentRef (supply chain vector — unpinned orbs, volatile tags)
+- [ ] Context-based secret scoping analysis
+- [ ] Expression injection in `run:` steps (environment variable interpolation)
+- [ ] `config.yml` processing/dynamic config (`setup: true`, continuation orb)
+- [ ] CircleCI fixtures (vulnerable + safe)
+- [ ] CircleCI-specific patterns (orb trust, context leaks, self-hosted runner)
+- [ ] Unit + E2E tests
+
+### Bitbucket Pipelines
+- [ ] `providers/bitbucket.py` — detect `bitbucket-pipelines.yml`, parse to WorkflowModel
+- [ ] Pipe references as ComponentRef (supply chain — unpinned pipe tags)
+- [ ] Variable injection in `script:` steps
+- [ ] Self-hosted runner detection (Bitbucket Runners)
+- [ ] Repository variable / deployment variable scoping
+- [ ] Bitbucket fixtures (vulnerable + safe)
+- [ ] Bitbucket-specific patterns (pipe trust, variable injection)
+- [ ] Unit + E2E tests
+
+### Buildkite
+- [ ] `providers/buildkite.py` — detect `pipeline.yml` / `.buildkite/`, parse to WorkflowModel
+- [ ] Plugin references as ComponentRef (supply chain)
+- [ ] Dynamic pipeline upload injection (`buildkite-agent pipeline upload`)
+- [ ] Environment variable injection in `command:` steps
+- [ ] Buildkite fixtures (vulnerable + safe)
+- [ ] Unit + E2E tests
+
+### Drone / Harness CI
+- [ ] `providers/drone.py` — detect `.drone.yml`, parse to WorkflowModel
+- [ ] Plugin image references as ComponentRef
+- [ ] Variable injection in `commands:`
+- [ ] Drone fixtures (vulnerable + safe)
+- [ ] Unit + E2E tests
+
+### Cloud vendor CI
+- [ ] `providers/codebuild.py` — AWS CodeBuild `buildspec.yml`
+- [ ] `providers/cloudbuild.py` — Google Cloud Build `cloudbuild.yaml`
+- [ ] IAM/secret misconfig patterns for cloud-native CI
+
 ## Backlog — from corpus testing
 
 - [ ] Composite action scanning — resolve `uses: ./path` to `action.yml`, scan composite steps for injection

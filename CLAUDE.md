@@ -2,7 +2,8 @@
 
 Multi-platform CI/CD pipeline security scanner. Pattern-driven detection of
 injection vulnerabilities, supply chain risks, and misconfigurations in
-GitHub Actions, GitLab CI, Azure Pipelines, and Jenkins.
+GitHub Actions, GitLab CI, Azure Pipelines, Jenkins, CircleCI, and
+Bitbucket Pipelines.
 
 Architecture doc: `docs/architecture.md`
 
@@ -67,6 +68,8 @@ actionsieve/
     azure.py        — Azure Pipelines provider
     jenkins.py      — Jenkins provider (declarative + scripted)
     jenkins_ast.py  — tree-sitter Groovy AST walker
+    circleci.py     — CircleCI provider
+    bitbucket.py    — Bitbucket Pipelines provider
 
 patterns/                  — YAML pattern catalog (data, not code)
 patterns/advisories/       — known-compromised component database
@@ -249,6 +252,5 @@ htmlcov/
 
 ## Current phase
 
-Phases 1–4 complete. Phase 6 in progress — Jenkins provider done,
-Markdown report output next. See `docs/architecture.md` for the full
-6-phase plan and `TODO.md` for the task breakdown.
+Phases 1–4 and 6 complete. Phase 7 in progress — CircleCI and Bitbucket
+Pipelines providers. See `TODO.md` for the full task breakdown.
