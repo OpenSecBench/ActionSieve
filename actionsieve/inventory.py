@@ -105,7 +105,8 @@ def collect(models: list[WorkflowModel]) -> Inventory:
                     continue
 
                 total += 1
-                key = f"{ref.owner}/{ref.name}" if ref.owner else ref.name
+                base_key = f"{ref.owner}/{ref.name}" if ref.owner else ref.name
+                key = f"{base_key}@{ref.ref}"
                 loc = ComponentLocation(
                     file=model.file_path,
                     job=job.id,

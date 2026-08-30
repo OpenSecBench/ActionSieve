@@ -5,10 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from actionsieve.inventory import Inventory
-
-SCORES = ("critical", "low", "medium", "high")
-SCORE_ORDER = {s: i for i, s in enumerate(SCORES)}
+    from actionsieve.inventory import Component, Inventory
 
 
 def score_components(inv: Inventory) -> None:
@@ -19,11 +16,7 @@ def score_components(inv: Inventory) -> None:
         ]
 
 
-def _compute_score(comp: object) -> str:
-    from actionsieve.inventory import Component
-
-    assert isinstance(comp, Component)
-
+def _compute_score(comp: Component) -> str:
     if comp.advisory_ids:
         return "critical"
 
@@ -42,10 +35,7 @@ def _compute_score(comp: object) -> str:
     return "low"
 
 
-def _compute_risks(comp: object) -> list[str]:
-    from actionsieve.inventory import Component
-
-    assert isinstance(comp, Component)
+def _compute_risks(comp: Component) -> list[str]:
     risks: list[str] = []
 
     if not comp.is_pinned:

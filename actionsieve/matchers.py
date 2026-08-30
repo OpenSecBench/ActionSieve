@@ -5,14 +5,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from actionsieve.chains import ChainAnalysis
     from actionsieve.engine import Finding
     from actionsieve.model import Job, WorkflowModel
+
+    MakeFinding = Callable[..., Finding]
 
 
 def match_structural(
     model: WorkflowModel,
     pattern: dict[str, Any],
-    make_finding: Any,
+    make_finding: MakeFinding,
 ) -> list[Finding]:
     pid = pattern["id"]
 
@@ -39,7 +44,7 @@ def match_structural(
 def _match_prt_checkout(
     model: WorkflowModel,
     pattern: dict[str, Any],
-    make_finding: Any,
+    make_finding: MakeFinding,
 ) -> list[Finding]:
     has_prt = any(t.raw_event == "pull_request_target" for t in model.triggers)
     if not has_prt:
@@ -77,7 +82,7 @@ def _match_prt_checkout(
 def _match_self_hosted(
     model: WorkflowModel,
     pattern: dict[str, Any],
-    make_finding: Any,
+    make_finding: MakeFinding,
 ) -> list[Finding]:
     findings: list[Finding] = []
     for job in model.jobs:
@@ -98,7 +103,7 @@ def _match_self_hosted(
 def _match_oidc_fork(
     model: WorkflowModel,
     pattern: dict[str, Any],
-    make_finding: Any,
+    make_finding: MakeFinding,
 ) -> list[Finding]:
     is_fork_reachable = any(t.is_fork_reachable for t in model.triggers)
     if not is_fork_reachable:
@@ -124,7 +129,7 @@ def _match_oidc_fork(
 def _match_cache_poisoning(
     model: WorkflowModel,
     pattern: dict[str, Any],
-    make_finding: Any,
+    make_finding: MakeFinding,
 ) -> list[Finding]:
     findings: list[Finding] = []
     for job in model.jobs:
@@ -152,7 +157,7 @@ def _match_cache_poisoning(
 def _match_workflow_run_artifacts(
     model: WorkflowModel,
     pattern: dict[str, Any],
-    make_finding: Any,
+    make_finding: MakeFinding,
 ) -> list[Finding]:
     has_workflow_run = any(t.raw_event == "workflow_run" for t in model.triggers)
     if not has_workflow_run:
@@ -178,7 +183,7 @@ def _match_workflow_run_artifacts(
 def _match_artifact_supply_chain(
     model: WorkflowModel,
     pattern: dict[str, Any],
-    make_finding: Any,
+    make_finding: MakeFinding,
 ) -> list[Finding]:
     has_workflow_run = any(t.raw_event == "workflow_run" for t in model.triggers)
     if not has_workflow_run:
@@ -211,7 +216,7 @@ def _match_structural_checks(
     model: WorkflowModel,
     pattern: dict[str, Any],
     checks: list[dict[str, Any]],
-    make_finding: Any,
+    make_finding: MakeFinding,
 ) -> list[Finding]:
     findings: list[Finding] = []
     for job in model.jobs:
@@ -304,7 +309,7 @@ def _describe_checks(
 def match_cross_step(
     model: WorkflowModel,
     pattern: dict[str, Any],
-    make_finding: Any,
+    make_finding: MakeFinding,
 ) -> list[Finding]:
     from actionsieve.chains import analyze
 
@@ -322,8 +327,8 @@ def match_cross_step(
 def _match_fs_to_matrix(
     model: WorkflowModel,
     pattern: dict[str, Any],
-    analysis: Any,
-    make_finding: Any,
+    analysis: ChainAnalysis,
+    make_finding: MakeFinding,
 ) -> list[Finding]:
     findings: list[Finding] = []
     for flow in analysis.flows:
@@ -359,8 +364,8 @@ def _match_fs_to_matrix(
 def _match_fork_script_output(
     model: WorkflowModel,
     pattern: dict[str, Any],
-    analysis: Any,
-    make_finding: Any,
+    analysis: ChainAnalysis,
+    make_finding: MakeFinding,
 ) -> list[Finding]:
     findings: list[Finding] = []
     for flow in analysis.flows:
@@ -395,8 +400,8 @@ def _match_fork_script_output(
 def _match_generic_cross_step(
     model: WorkflowModel,
     pattern: dict[str, Any],
-    analysis: Any,
-    make_finding: Any,
+    analysis: ChainAnalysis,
+    make_finding: MakeFinding,
 ) -> list[Finding]:
     findings: list[Finding] = []
     grep_patterns: list[str] = pattern.get("detection", {}).get("grep_patterns", [])

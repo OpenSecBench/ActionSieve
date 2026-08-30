@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
+
+if TYPE_CHECKING:
+    from actionsieve.inventory import Component, Inventory
 
 DEFAULT_DB = Path(__file__).parent.parent / "patterns" / "advisories"
 
@@ -65,12 +68,9 @@ def _load_file(path: Path) -> list[Advisory]:
 
 
 def check_advisories(
-    inv: Any,
+    inv: Inventory,
     db_path: Path | None = None,
-) -> Any:
-    from actionsieve.inventory import Inventory
-
-    assert isinstance(inv, Inventory)
+) -> Inventory:
     advisories = load_advisories(db_path)
     by_key = _index_advisories(advisories)
     matches = 0
@@ -97,7 +97,7 @@ def _index_advisories(advisories: list[Advisory]) -> dict[str, list[Advisory]]:
     return by_key
 
 
-def _is_affected(comp: Any, adv: Advisory) -> bool:
+def _is_affected(comp: Component, adv: Advisory) -> bool:
     for ver in adv.compromised_versions:
         if ver.get("sha_malicious") and comp.ref == ver["sha_malicious"]:
             return True
