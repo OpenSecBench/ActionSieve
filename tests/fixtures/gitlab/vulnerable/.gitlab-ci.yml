@@ -1,0 +1,53 @@
+stages:
+  - build
+  - test
+  - deploy
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+
+variables:
+  DEPLOY_TOKEN: $SECRET_DEPLOY_KEY
+
+build:
+  stage: build
+  tags:
+    - shared-runner
+  script:
+    - echo "Building branch $CI_COMMIT_REF_NAME"
+    - echo "Commit message: $CI_COMMIT_MESSAGE"
+    - npm install
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+
+test:
+  stage: test
+  needs: [build]
+  script:
+    - echo "Testing MR: $CI_MERGE_REQUEST_TITLE"
+    - npm test
+
+include-remote:
+  stage: build
+  script:
+    - echo "This job uses remote include"
+
+deploy:
+  stage: deploy
+  tags:
+    - production-runner
+  script:
+    - curl -H "Authorization: Bearer $SECRET_DEPLOY_KEY" https://deploy.example.com
+    - echo "Deploying $CI_COMMIT_TAG_MESSAGE"
+  rules:
+    - if: '$CI_COMMIT_TAG'
+
+trigger-downstream:
+  stage: deploy
+  trigger:
+    project: my-group/downstream-project
+    branch: main

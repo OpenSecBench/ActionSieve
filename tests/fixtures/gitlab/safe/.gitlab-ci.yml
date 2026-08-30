@@ -1,0 +1,26 @@
+stages:
+  - build
+  - test
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+
+build:
+  stage: build
+  image: node:18
+  script:
+    - echo "Building project"
+    - npm install
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+
+test:
+  stage: test
+  needs: [build]
+  image: node:18
+  script:
+    - echo "Running tests"
+    - npm test
