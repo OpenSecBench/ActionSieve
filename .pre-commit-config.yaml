@@ -13,7 +13,6 @@ repos:
         entry: .venv/bin/mypy --strict actionsieve/
         language: system
         pass_filenames: false
-        always_run: true
         types: [python]
 
       - id: pytest
@@ -21,4 +20,4 @@ repos:
         entry: .venv/bin/pytest
         language: system
         pass_filenames: false
-        always_run: true
+        types: [python]
