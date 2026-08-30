@@ -103,7 +103,29 @@
         "status": {
           "enum": ["active", "documented", "deprecated"],
           "default": "documented"
+        },
+        "diff_scope": {
+          "enum": ["always", "changeset"],
+          "default": "always",
+          "description": "Whether changeset context affects this finding"
+        },
+        "diff_effect": {
+          "enum": ["suppress", "elevate"],
+          "description": "How changeset match affects the finding"
+        },
+        "reachable_files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Globs matched against changed files (repo-root-relative)"
         }
+      },
+      "if": {
+        "properties": { "diff_scope": { "const": "changeset" } },
+        "required": ["diff_scope"]
+      },
+      "then": {
+        "required": ["diff_effect", "reachable_files"]
       }
     },
     "impact_class": {

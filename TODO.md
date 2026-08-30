@@ -239,11 +239,11 @@ Full spec + design decisions: `../actionsieve-corpus/bugs/diff-aware-scanning.md
 - [x] Tests for error cases (bad ref, not a repo)
 
 ### Step 2: Pattern schema changes
-- [ ] Add optional `diff_scope` (`always` | `changeset`) to `patterns/schema.json`
-- [ ] Add optional `diff_effect` (`suppress` | `elevate`) to `patterns/schema.json`
-- [ ] Add optional `reachable_files` (array of glob strings) to `patterns/schema.json`
-- [ ] Conditional validation: `diff_scope: changeset` requires `reachable_files` + `diff_effect`
-- [ ] Schema validation tests
+- [x] Add optional `diff_scope` (`always` | `changeset`) to `patterns/schema.json`
+- [x] Add optional `diff_effect` (`suppress` | `elevate`) to `patterns/schema.json`
+- [x] Add optional `reachable_files` (array of glob strings) to `patterns/schema.json`
+- [x] Conditional validation: `diff_scope: changeset` requires `reachable_files` + `diff_effect`
+- [x] Schema validation tests
 
 ### Step 3: Context module
 - [ ] `context.py` — `ScanContext` dataclass (changed_files, trigger, actor, mode)

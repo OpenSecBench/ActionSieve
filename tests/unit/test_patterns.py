@@ -120,3 +120,80 @@ class TestValidation:
         bad.write_text("patterns:\n  - id: test\n    title: Test\n")
         with pytest.raises(PatternError, match="Schema validation failed"):
             load_patterns(bad)
+
+
+VALID_BASE = (
+    "patterns:\n"
+    "  - id: diff-test\n"
+    "    title: Test\n"
+    "    description: Test\n"
+    "    platforms: all\n"
+    "    attacker_model: any\n"
+    "    impact: rce\n"
+    "    severity_base: high\n"
+    "    detection:\n"
+    "      type: single_step\n"
+)
+
+
+class TestDiffScopeSchema:
+    def test_diff_scope_always_valid(self, tmp_path: Path) -> None:
+        f = tmp_path / "p.yml"
+        f.write_text(VALID_BASE + "    diff_scope: always\n")
+        patterns = load_patterns(f)
+        assert patterns[0]["diff_scope"] == "always"
+
+    def test_diff_scope_changeset_with_required_fields(self, tmp_path: Path) -> None:
+        f = tmp_path / "p.yml"
+        f.write_text(
+            VALID_BASE
+            + "    diff_scope: changeset\n"
+            + "    diff_effect: suppress\n"
+            + "    reachable_files:\n"
+            + '      - "Dockerfile*"\n'
+        )
+        patterns = load_patterns(f)
+        assert patterns[0]["diff_scope"] == "changeset"
+        assert patterns[0]["diff_effect"] == "suppress"
+        assert patterns[0]["reachable_files"] == ["Dockerfile*"]
+
+    def test_diff_scope_changeset_elevate(self, tmp_path: Path) -> None:
+        f = tmp_path / "p.yml"
+        f.write_text(
+            VALID_BASE
+            + "    diff_scope: changeset\n"
+            + "    diff_effect: elevate\n"
+            + "    reachable_files:\n"
+            + '      - ".github/workflows/*.yml"\n'
+        )
+        patterns = load_patterns(f)
+        assert patterns[0]["diff_effect"] == "elevate"
+
+    def test_diff_scope_changeset_missing_effect_rejected(self, tmp_path: Path) -> None:
+        f = tmp_path / "p.yml"
+        f.write_text(
+            VALID_BASE
+            + "    diff_scope: changeset\n"
+            + "    reachable_files:\n"
+            + '      - "Dockerfile*"\n'
+        )
+        with pytest.raises(PatternError, match="Schema validation failed"):
+            load_patterns(f)
+
+    def test_diff_scope_changeset_missing_reachable_rejected(self, tmp_path: Path) -> None:
+        f = tmp_path / "p.yml"
+        f.write_text(VALID_BASE + "    diff_scope: changeset\n" + "    diff_effect: suppress\n")
+        with pytest.raises(PatternError, match="Schema validation failed"):
+            load_patterns(f)
+
+    def test_no_diff_scope_valid(self, tmp_path: Path) -> None:
+        f = tmp_path / "p.yml"
+        f.write_text(VALID_BASE)
+        patterns = load_patterns(f)
+        assert "diff_scope" not in patterns[0]
+
+    def test_invalid_diff_scope_value_rejected(self, tmp_path: Path) -> None:
+        f = tmp_path / "p.yml"
+        f.write_text(VALID_BASE + "    diff_scope: invalid\n")
+        with pytest.raises(PatternError, match="Schema validation failed"):
+            load_patterns(f)
