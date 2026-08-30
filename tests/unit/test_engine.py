@@ -66,6 +66,21 @@ class TestSupplyChain:
         assert any("shared-workflows" in r for r in refs)
 
 
+class TestTruncatedSha:
+    def test_detects_truncated_sha(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/truncated-sha.yml")
+        hits = [f for f in findings if f.pattern_id == "truncated-sha-pin"]
+        assert len(hits) == 2
+        evidence = " ".join(e for f in hits for e in f.evidence)
+        assert "abc1234" in evidence
+        assert "7-char hex" in evidence or "38-char hex" in evidence
+
+    def test_full_sha_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/pinned-actions.yml")
+        hits = [f for f in findings if f.pattern_id == "truncated-sha-pin"]
+        assert len(hits) == 0
+
+
 class TestSelfHosted:
     def test_detects_self_hosted(self) -> None:
         findings = _scan("vulnerable/.github/workflows/self-hosted-secrets.yml")

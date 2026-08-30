@@ -47,6 +47,7 @@ def match_structural(
         "codebuild-exported-secrets": match_codebuild_exported_secrets,
         "cloudbuild-secret-in-env": match_cloudbuild_secret_in_env,
         "cloudbuild-default-service-account": match_cloudbuild_default_sa,
+        "truncated-sha-pin": _match_truncated_sha,
     }
 
     matcher = dispatch.get(pid)
@@ -540,4 +541,33 @@ def _match_issue_comment_fork_checkout(
                 line=0,
             )
         )
+    return findings
+
+
+_HEX = frozenset("0123456789abcdef")
+
+
+def _match_truncated_sha(
+    model: WorkflowModel, pattern: dict[str, Any], make_finding: MakeFinding
+) -> list[Finding]:
+    findings: list[Finding] = []
+    for job in model.jobs:
+        for step in job.steps:
+            ref = step.action_ref
+            if ref is None or ref.owner == "." or ref.raw.startswith("./"):
+                continue
+            r = ref.ref.lower()
+            if 7 <= len(r) < 40 and all(c in _HEX for c in r):
+                findings.append(
+                    make_finding(
+                        pattern=pattern,
+                        model=model,
+                        job=job,
+                        step=step,
+                        evidence=[
+                            f"{ref.raw}: ref is {len(r)}-char hex, expected 40-char SHA",
+                        ],
+                        line=ref.line,
+                    )
+                )
     return findings

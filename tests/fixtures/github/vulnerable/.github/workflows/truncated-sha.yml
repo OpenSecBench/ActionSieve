@@ -1,0 +1,13 @@
+name: CI
+on: push
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: some-org/some-action@abc1234
+      - uses: another-org/deploy@deadbeef1234567890abcdef12345678901234

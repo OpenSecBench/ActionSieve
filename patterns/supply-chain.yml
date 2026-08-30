@@ -154,3 +154,38 @@ patterns:
     references:
       - https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows#restrictions-for-accessing-a-cache
     status: documented
+
+  - id: truncated-sha-pin
+    title: Action pinned to truncated commit SHA
+    description: |
+      A workflow pins an action to a hex string shorter than 40 characters.
+      Git resolves short SHAs to the first matching object, which can become
+      ambiguous as the repository grows. An attacker who controls the action
+      repo can craft a commit whose SHA shares the same prefix, hijacking
+      the resolution. Use full 40-character commit SHAs.
+    platforms: "all"
+    trigger: [any]
+    trust_boundary: third_party_action_supply_chain
+    attacker_model: action_maintainer_compromise
+    impact: [supply_chain]
+    severity_base: info
+    requires_self_hosted: false
+    severity_notes: |
+      Informational — the developer intended to pin but used a short SHA.
+      Exploitability is low (SHA prefix collision requires targeted effort)
+      but the fix is trivial: use the full 40-char SHA.
+    detection:
+      type: structural
+      grep_patterns:
+        - 'uses: '
+      check_for: |
+        Action reference whose ref is 7–39 hex characters — looks like a
+        SHA pin attempt but isn't the full 40-char commit hash.
+    mitigations:
+      - Expand to full 40-character commit SHA
+      - Use Dependabot or Renovate to manage SHA pins
+    cwe: CWE-829
+    tags: [supply-chain, pinning, actions, truncated-sha]
+    references:
+      - https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions
+    status: active
