@@ -193,10 +193,7 @@ patterns:
       grep_patterns:
         - '${{ github.event.inputs.'
         - '${{ inputs.'
-      safe_if:
-        - "Inputs are choice type with fixed options"
-        - "Inputs are routed through env vars and quoted"
-        - "Inputs are boolean or number type"
+      exclude_safe_dispatch_inputs: true
     mitigations:
       - Use choice type inputs with fixed options
       - Route inputs through env vars and quote in shell

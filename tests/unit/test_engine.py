@@ -94,6 +94,18 @@ class TestDispatchInjection:
         dispatch_findings = [f for f in findings if f.pattern_id == "dispatch-input-injection"]
         assert len(dispatch_findings) == 0
 
+    def test_choice_input_direct_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/dispatch-choice-direct.yml")
+        dispatch_findings = [f for f in findings if f.pattern_id == "dispatch-input-injection"]
+        assert len(dispatch_findings) == 0
+
+    def test_mixed_inputs_flags_string_only(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/dispatch-mixed-inputs.yml")
+        dispatch_findings = [f for f in findings if f.pattern_id == "dispatch-input-injection"]
+        assert len(dispatch_findings) >= 1
+        evidence_text = " ".join(e for f in dispatch_findings for e in f.evidence)
+        assert "inputs." in evidence_text
+
 
 class TestOutputDelimiterInjection:
     def test_detects_hardcoded_delimiter(self) -> None:

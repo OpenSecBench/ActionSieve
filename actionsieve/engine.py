@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import re
 import warnings
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from actionsieve.cross_step import match_cross_step
 from actionsieve.matchers import match_structural
@@ -70,10 +71,12 @@ def _match_single_step(
     in_block = detection.get("in_block", "")
     grep_patterns: list[str] = detection.get("grep_patterns", [])
     exclude_if_in: list[str] = detection.get("exclude_if_in", [])
+    skip_safe_inputs = detection.get("exclude_safe_dispatch_inputs", False)
 
     if not grep_patterns:
         return []
 
+    safe_inputs = _get_safe_dispatch_inputs(model) if skip_safe_inputs else set()
     findings: list[Finding] = []
 
     for job in model.jobs:
@@ -87,6 +90,9 @@ def _match_single_step(
                     continue
 
                 if _should_exclude(step, grep, exclude_if_in):
+                    continue
+
+                if safe_inputs and _grep_targets_safe_input(text, grep, safe_inputs):
                     continue
 
                 findings.append(
@@ -185,6 +191,41 @@ def _find_expression_line(step: Step, grep: str) -> int:
         if (grep in expr.raw or grep in expr.context_path) and expr.line > 0:
             return expr.line
     return 0
+
+
+SAFE_INPUT_TYPES = frozenset({"choice", "boolean"})
+
+INPUT_PREFIXES = ("${{ inputs.", "${{ github.event.inputs.")
+
+
+def _get_safe_dispatch_inputs(model: WorkflowModel) -> set[str]:
+    on: Any = model.raw.get("on")
+    if on is None:
+        on = cast("dict[Any, Any]", model.raw).get(True)
+    if not isinstance(on, dict):
+        return set()
+    dispatch = on.get("workflow_dispatch")
+    if not isinstance(dispatch, dict):
+        return set()
+    inputs = dispatch.get("inputs")
+    if not isinstance(inputs, dict):
+        return set()
+    return {
+        name
+        for name, spec in inputs.items()
+        if isinstance(spec, dict) and spec.get("type") in SAFE_INPUT_TYPES
+    }
+
+
+def _grep_targets_safe_input(text: str, grep: str, safe_inputs: set[str]) -> bool:
+    for prefix in INPUT_PREFIXES:
+        if not grep.endswith(prefix):
+            continue
+        for m in re.finditer(re.escape(prefix) + r"(\w+)\s*}}", text):
+            if m.group(1) not in safe_inputs:
+                return False
+        return True
+    return False
 
 
 def _make_finding(

@@ -155,6 +155,10 @@
         "platform_rules": {
           "type": "object",
           "additionalProperties": { "type": "object" }
+        },
+        "exclude_safe_dispatch_inputs": {
+          "type": "boolean",
+          "default": false
         }
       },
       "additionalProperties": false

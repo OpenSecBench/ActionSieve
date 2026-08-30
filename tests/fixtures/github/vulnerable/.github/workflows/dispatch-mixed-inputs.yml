@@ -1,0 +1,19 @@
+name: Deploy with notes
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      notes:
+        description: Deploy notes
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Deploying to ${{ inputs.environment }} with ${{ inputs.notes }}"
