@@ -26,10 +26,14 @@ def compute_static(finding: Finding, model: WorkflowModel) -> str:
 
     if has_privileged_trigger and has_secrets:
         modifier += 1
-    if is_self_hosted:
+    if is_self_hosted and has_fork_trigger:
         modifier += 1
     if has_fork_trigger and not has_privileged_trigger and not has_secrets:
         modifier -= 1
+
+    attacker_needs_fork = finding.attacker_model == "fork_pr"
+    if attacker_needs_fork and not has_fork_trigger:
+        modifier -= 2
 
     return _clamp(base + modifier)
 

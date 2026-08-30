@@ -8,6 +8,7 @@ def _finding(
     pattern_id: str = "test-pattern",
     tags: list[str] | None = None,
     job_id: str = "build",
+    attacker_model: str = "fork_pr",
 ) -> Finding:
     return Finding(
         pattern_id=pattern_id,
@@ -18,7 +19,7 @@ def _finding(
         job_id=job_id,
         step_index=0,
         severity_base=severity_base,
-        attacker_model="fork_pr",
+        attacker_model=attacker_model,
         impact="rce",
         tags=tags or [],
     )
@@ -39,12 +40,12 @@ def _model(
 
 class TestComputeStatic:
     def test_base_severity_unchanged_without_context(self) -> None:
-        f = _finding(severity_base="high")
+        f = _finding(severity_base="high", attacker_model="contributor")
         m = _model()
         assert compute_static(f, m) == "high"
 
     def test_privileged_trigger_with_secrets_elevates(self) -> None:
-        f = _finding(severity_base="high")
+        f = _finding(severity_base="high", attacker_model="contributor")
         m = _model(
             triggers=[Trigger(event="push", raw_event="push", is_privileged=True)],
             jobs=[
@@ -57,12 +58,29 @@ class TestComputeStatic:
         )
         assert compute_static(f, m) == "critical"
 
-    def test_self_hosted_elevates(self) -> None:
+    def test_self_hosted_with_fork_trigger_elevates(self) -> None:
         f = _finding(severity_base="medium")
         m = _model(
+            triggers=[
+                Trigger(event="push", raw_event="push", is_privileged=True),
+                Trigger(
+                    event="pull_request",
+                    raw_event="pull_request",
+                    is_fork_reachable=True,
+                ),
+            ],
             jobs=[Job(id="build", runner=make_runner(["self-hosted", "linux"]))],
         )
         assert compute_static(f, m) == "high"
+
+    def test_self_hosted_without_fork_trigger_downgrades(self) -> None:
+        f = _finding(severity_base="high")
+        m = _model(
+            triggers=[Trigger(event="push", raw_event="push", is_privileged=True)],
+            jobs=[Job(id="build", runner=make_runner(["self-hosted", "linux"]))],
+        )
+        result = compute_static(f, m)
+        assert result in ("low", "medium")
 
     def test_fork_pr_no_secrets_downgrades(self) -> None:
         f = _finding(severity_base="high")
@@ -78,7 +96,7 @@ class TestComputeStatic:
         assert compute_static(f, m) == "medium"
 
     def test_severity_never_above_critical(self) -> None:
-        f = _finding(severity_base="critical")
+        f = _finding(severity_base="critical", attacker_model="contributor")
         m = _model(
             triggers=[Trigger(event="push", raw_event="push", is_privileged=True)],
             jobs=[
