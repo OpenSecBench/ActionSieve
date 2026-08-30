@@ -73,6 +73,8 @@ actionsieve/
     bitbucket.py      — Bitbucket Pipelines provider
     buildkite.py      — Buildkite Pipelines provider
     drone.py          — Drone CI provider
+    codebuild.py      — AWS CodeBuild provider
+    cloudbuild.py     — Google Cloud Build provider
 
 patterns/                  — YAML pattern catalog (data, not code)
 patterns/advisories/       — known-compromised component database
@@ -255,5 +257,6 @@ htmlcov/
 
 ## Current phase
 
-Phases 1–4 and 6 complete. Phase 7 in progress — CircleCI and Bitbucket
-Pipelines providers. See `TODO.md` for the full task breakdown.
+Phases 1–4, 6, and 7 complete. All platform providers implemented:
+GitHub, GitLab, Azure, Jenkins, CircleCI, Bitbucket, Buildkite, Drone,
+CodeBuild, Cloud Build. See `TODO.md` for remaining work.

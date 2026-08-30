@@ -201,8 +201,8 @@
 - [x] Unit + E2E tests
 
 ### Cloud vendor CI
-- [ ] `providers/codebuild.py` — AWS CodeBuild `buildspec.yml`
-- [ ] `providers/cloudbuild.py` — Google Cloud Build `cloudbuild.yaml`
+- [x] `providers/codebuild.py` — AWS CodeBuild `buildspec.yml`
+- [x] `providers/cloudbuild.py` — Google Cloud Build `cloudbuild.yaml`
 - [ ] IAM/secret misconfig patterns for cloud-native CI
 
 ## Backlog — from corpus testing
