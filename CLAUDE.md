@@ -22,6 +22,7 @@ Runtime:
 - `pyyaml` — YAML parsing (safe_load only)
 - `jsonschema` — pattern and profile schema validation
 - `jinja2` — Markdown report templates
+- `tree-sitter` + `tree-sitter-groovy` — Jenkins Groovy AST parsing
 
 Dev:
 - `pytest` — test runner
@@ -64,7 +65,8 @@ actionsieve/
     github_parse.py — expression extraction, ref parsing, utility helpers
     gitlab.py       — GitLab CI provider
     azure.py        — Azure Pipelines provider
-    jenkins.py      — Jenkins provider
+    jenkins.py      — Jenkins provider (declarative + scripted)
+    jenkins_ast.py  — tree-sitter Groovy AST walker
 
 patterns/                  — YAML pattern catalog (data, not code)
 patterns/advisories/       — known-compromised component database

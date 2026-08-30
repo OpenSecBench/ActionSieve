@@ -153,14 +153,15 @@
 
 ## Phase 6: Jenkins + reporting + polish
 
-- [x] `providers/jenkins.py` — declarative pipeline parser (regex-based)
-- [x] Jenkins fixtures (vulnerable + safe)
+- [x] `providers/jenkins.py` — declarative pipeline parser (regex-based → tree-sitter)
+- [x] `providers/jenkins_ast.py` — tree-sitter Groovy AST walker
+- [x] Jenkins fixtures (vulnerable + safe, declarative + scripted + script-block)
 - [x] Jenkins-specific patterns (parameter injection, change variable injection)
+- [x] Scripted pipeline support (node {}, script {} blocks, sh named args)
 - [x] `output.py` — Markdown report generation (Jinja2 template)
 - [ ] CI wrapper distribution (GitHub Action YAML, GitLab template, Azure task)
 - [ ] Pattern catalog versioning and update mechanism
 - [ ] Interactive TUI for triaging search results (textual or rich)
-- [ ] Groovy AST parser for scripted Jenkins pipelines (stretch)
 
 ## Ongoing
 
