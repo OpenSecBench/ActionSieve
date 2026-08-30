@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
@@ -11,8 +10,6 @@ if TYPE_CHECKING:
 import yaml
 
 from actionsieve.model import (
-    ComponentRef,
-    Expression,
     Job,
     Permissions,
     Step,
@@ -21,34 +18,16 @@ from actionsieve.model import (
     make_runner,
 )
 from actionsieve.providers import ExpressionSyntax, ParseError
+from actionsieve.providers.github_parse import (
+    detect_outputs_written,
+    extract_expressions,
+    find_secrets,
+    parse_uses,
+    step_text,
+    str_dict,
+)
 
 MAX_FILE_SIZE = 1_048_576  # 1MB
-
-EXPRESSION_RE = re.compile(r"\$\{\{\s*(.*?)\s*\}\}")
-
-GITHUB_FIRST_PARTY = frozenset({"actions", "github"})
-
-TAINTED_CONTEXT_PREFIXES = (
-    "github.event.pull_request.title",
-    "github.event.pull_request.body",
-    "github.event.pull_request.head.ref",
-    "github.event.pull_request.head.label",
-    "github.event.issue.title",
-    "github.event.issue.body",
-    "github.event.comment.body",
-    "github.event.review.body",
-    "github.event.review_comment.body",
-    "github.event.discussion.title",
-    "github.event.discussion.body",
-    "github.event.head_commit.message",
-    "github.event.head_commit.author.name",
-    "github.event.head_commit.author.email",
-    "github.event.commits",
-    "github.event.workflow_run.display_title",
-    "github.event.workflow_run.head_branch",
-    "github.event.pages",
-    "github.head_ref",
-)
 
 PRIVILEGED_TRIGGERS = frozenset(
     {
@@ -70,9 +49,6 @@ FORK_REACHABLE_TRIGGERS = frozenset(
         "fork",
     }
 )
-
-GITHUB_OUTPUT_RE = re.compile(r""">>?\s*["']?\$(?:GITHUB_OUTPUT|\{GITHUB_OUTPUT\})["']?""")
-OUTPUT_KEY_RE = re.compile(r"""(\w[\w-]*)=""")
 
 
 class GitHubProvider:
@@ -105,7 +81,7 @@ class GitHubProvider:
 
         triggers = _parse_triggers(raw)
         permissions = _parse_permissions(raw.get("permissions"))
-        env = _str_dict(raw.get("env", {}))
+        env = str_dict(raw.get("env", {}))
         jobs = _parse_jobs(raw.get("jobs", {}), text)
 
         return WorkflowModel(
@@ -118,7 +94,7 @@ class GitHubProvider:
             jobs=jobs,
         )
 
-    def resolve_ref(self, ref: ComponentRef) -> ComponentRef:
+    def resolve_ref(self, ref: Any) -> Any:
         return ref
 
     def expression_syntax(self) -> ExpressionSyntax:
@@ -145,7 +121,6 @@ class GitHubProvider:
 def _parse_triggers(raw: dict[str, Any]) -> list[Trigger]:
     on: Any = raw.get("on")
     if on is None:
-        # YAML parses bare `on:` as boolean True key
         on = cast("dict[Any, Any]", raw).get(True)
     if on is None:
         return []
@@ -222,12 +197,12 @@ def _parse_job(job_id: str, data: Any, lines: list[str]) -> Job:
     else:
         needs = []
 
-    outputs = _str_dict(data.get("outputs", {}))
+    outputs = str_dict(data.get("outputs", {}))
 
     steps_raw = data.get("steps", [])
     steps = [_parse_step(i, s, lines) for i, s in enumerate(steps_raw) if isinstance(s, dict)]
 
-    secrets_referenced = _find_secrets(data)
+    secrets_referenced = find_secrets(data)
 
     conditions: list[str] = []
     if "if" in data:
@@ -238,7 +213,7 @@ def _parse_job(job_id: str, data: Any, lines: list[str]) -> Job:
         runner=make_runner(runner_raw),
         name=data.get("name"),
         permissions=_parse_permissions(data.get("permissions")),
-        env=_str_dict(data.get("env", {})),
+        env=str_dict(data.get("env", {})),
         needs=needs,
         outputs=outputs,
         steps=steps,
@@ -250,7 +225,7 @@ def _parse_job(job_id: str, data: Any, lines: list[str]) -> Job:
 def _parse_step(index: int, data: dict[str, Any], lines: list[str]) -> Step:
     step_type = "shell"
     shell_command: str | None = None
-    action_ref: ComponentRef | None = None
+    action_ref = None
     inputs: dict[str, str] = {}
 
     if "run" in data:
@@ -258,17 +233,17 @@ def _parse_step(index: int, data: dict[str, Any], lines: list[str]) -> Step:
         shell_command = str(data["run"])
     elif "uses" in data:
         step_type = "action"
-        action_ref = _parse_uses(str(data["uses"]), lines)
-        inputs = _str_dict(data.get("with", {}))
+        action_ref = parse_uses(str(data["uses"]), lines)
+        inputs = str_dict(data.get("with", {}))
     else:
         step_type = "script"
 
-    env = _str_dict(data.get("env", {}))
+    env = str_dict(data.get("env", {}))
 
-    all_text = _step_text(data)
-    expressions = _extract_expressions(all_text, shell_command, lines)
+    all_text = step_text(data)
+    expressions = extract_expressions(all_text, shell_command, lines)
 
-    outputs_written = _detect_outputs_written(shell_command)
+    outputs_written = detect_outputs_written(shell_command)
 
     conditions: list[str] = []
     if "if" in data:
@@ -287,126 +262,3 @@ def _parse_step(index: int, data: dict[str, Any], lines: list[str]) -> Step:
         expressions=expressions,
         conditions=conditions,
     )
-
-
-def _parse_uses(uses: str, lines: list[str]) -> ComponentRef:
-    line_num = _find_line(lines, uses)
-
-    if "@" in uses:
-        path_part, ref = uses.rsplit("@", 1)
-    else:
-        path_part = uses
-        ref = ""
-
-    owner: str | None = None
-    name = path_part
-    if "/" in path_part:
-        parts = path_part.split("/", 1)
-        owner = parts[0]
-        name = parts[1]
-
-    ref_type = _classify_ref(ref)
-    is_first_party = owner in GITHUB_FIRST_PARTY if owner else False
-
-    return ComponentRef(
-        raw=uses,
-        owner=owner,
-        name=name,
-        ref=ref,
-        ref_type=ref_type,
-        is_pinned=ref_type == "sha",
-        is_first_party=is_first_party,
-        line=line_num,
-    )
-
-
-def _classify_ref(ref: str) -> str:
-    if not ref:
-        return "unknown"
-    if len(ref) == 40 and all(c in "0123456789abcdef" for c in ref):
-        return "sha"
-    if re.match(r"^v?\d+(\.\d+)*$", ref):
-        return "tag"
-    return "branch"
-
-
-def _extract_expressions(
-    text: str,
-    shell_command: str | None,
-    file_lines: list[str] | None = None,
-) -> list[Expression]:
-    expressions: list[Expression] = []
-    for m in EXPRESSION_RE.finditer(text):
-        context_path = m.group(1).strip()
-        raw = m.group(0)
-
-        in_shell = shell_command is not None and raw in (shell_command or "")
-        location = "run" if in_shell else "other"
-
-        is_tainted = any(context_path.startswith(prefix) for prefix in TAINTED_CONTEXT_PREFIXES)
-
-        line = _find_line(file_lines or [], raw) if file_lines else 0
-
-        expressions.append(
-            Expression(
-                raw=raw,
-                context_path=context_path,
-                location=location,
-                is_in_shell=in_shell,
-                is_tainted=is_tainted,
-                line=line,
-            )
-        )
-
-    return expressions
-
-
-def _detect_outputs_written(shell_command: str | None) -> list[str]:
-    if not shell_command:
-        return []
-    keys: list[str] = []
-    for line in shell_command.splitlines():
-        if GITHUB_OUTPUT_RE.search(line):
-            key_match = OUTPUT_KEY_RE.search(line)
-            if key_match:
-                keys.append(key_match.group(1))
-    return keys
-
-
-def _find_secrets(data: Any) -> list[str]:
-    secrets: list[str] = []
-    text = str(data)
-    for match in re.finditer(r"\$\{\{\s*secrets\.(\w+)\s*\}\}", text):
-        name = match.group(1)
-        if name not in secrets:
-            secrets.append(name)
-    return secrets
-
-
-def _step_text(data: dict[str, Any]) -> str:
-    parts: list[str] = []
-    for key in ("run", "name", "if"):
-        if key in data:
-            parts.append(str(data[key]))
-    with_data = data.get("with", {})
-    if isinstance(with_data, dict):
-        for v in with_data.values():
-            parts.append(str(v))
-    env_data = data.get("env", {})
-    if isinstance(env_data, dict):
-        for v in env_data.values():
-            parts.append(str(v))
-    return "\n".join(parts)
-
-
-def _find_line(lines: list[str], needle: str) -> int:
-    for i, line in enumerate(lines, 1):
-        if needle in line:
-            return i
-    return 0
-
-
-def _str_dict(raw: Any) -> dict[str, str]:
-    if not isinstance(raw, dict):
-        return {}
-    return {str(k): str(v) for k, v in raw.items()}

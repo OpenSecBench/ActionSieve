@@ -59,11 +59,12 @@ actionsieve/
   output.py       — result formatting (JSON, YAML, Markdown, SARIF, CycloneDX)
   search.py       — forge-wide code search
   providers/
-    __init__.py   — provider interface (Protocol class) + auto-detection
-    github.py     — GitHub Actions provider
-    gitlab.py     — GitLab CI provider
-    azure.py      — Azure Pipelines provider
-    jenkins.py    — Jenkins provider
+    __init__.py     — provider interface (Protocol class) + auto-detection
+    github.py       — GitHub Actions provider
+    github_parse.py — expression extraction, ref parsing, utility helpers
+    gitlab.py       — GitLab CI provider
+    azure.py        — Azure Pipelines provider
+    jenkins.py      — Jenkins provider
 
 patterns/                  — YAML pattern catalog (data, not code)
 patterns/advisories/       — known-compromised component database
