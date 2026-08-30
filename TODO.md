@@ -186,12 +186,12 @@
 - [x] Unit + E2E tests
 
 ### Buildkite
-- [ ] `providers/buildkite.py` — detect `pipeline.yml` / `.buildkite/`, parse to WorkflowModel
-- [ ] Plugin references as ComponentRef (supply chain)
-- [ ] Dynamic pipeline upload injection (`buildkite-agent pipeline upload`)
-- [ ] Environment variable injection in `command:` steps
-- [ ] Buildkite fixtures (vulnerable + safe)
-- [ ] Unit + E2E tests
+- [x] `providers/buildkite.py` — detect `pipeline.yml` / `.buildkite/`, parse to WorkflowModel
+- [x] Plugin references as ComponentRef (supply chain)
+- [x] Dynamic pipeline upload injection (`buildkite-agent pipeline upload`)
+- [x] Environment variable injection in `command:` steps
+- [x] Buildkite fixtures (vulnerable + safe)
+- [x] Unit + E2E tests
 
 ### Drone / Harness CI
 - [ ] `providers/drone.py` — detect `.drone.yml`, parse to WorkflowModel
