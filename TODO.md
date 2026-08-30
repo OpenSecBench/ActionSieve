@@ -221,7 +221,7 @@
 - [x] Unverified script execution — detect `curl | bash`, `wget | sh`, `base64 -d | sh` and similar pipe-to-shell patterns in run blocks. Universal grep pattern across all platforms. New pattern file `patterns/unsafe-scripts.yml`.
 - [x] Docker-in-Docker detection — flag `docker run` / `docker build` inside CI steps, GitLab `services: [docker:dind]`, `--privileged` containers. Privilege escalation vector on shared runners.
 - [ ] `actionsieve profile resolve` — CLI subcommand that prints the effective profile after overlay resolution. Debugging aid for custom profile configs.
-- [ ] OCSF output format — Open Cybersecurity Standards Framework Compliance Finding (schema 1.8.0) for GRC platform integration. Another `output.py` formatter.
+- [x] OCSF output format — OCSF Detection Finding (class_uid 2004, schema 1.4.0) for GRC platform integration. `--format ocsf` in CLI.
 - [x] Static cloud credentials detection — flag long-lived AWS access keys (`AWS_ACCESS_KEY_ID`), GCP service account JSON, Azure client secrets in env/secrets when OIDC federation is available (`aws-actions/configure-aws-credentials` with `role-to-assume`, `google-github-actions/auth` with `workload_identity_provider`). OIDC is the secure path; static keys are a secret exposure risk. New pattern file `patterns/cloud-credentials.yml`.
 - [x] Cache poisoning detection — flag CI cache writes (`actions/cache`, `save_cache`, `cache:` directives) in workflows reachable from fork PRs. Attacker-controlled fork can poison the cache with malicious build artifacts or dependencies that persist into trusted branch builds. Structural matcher: cache save step + fork-reachable trigger.
 
