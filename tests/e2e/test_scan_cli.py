@@ -266,6 +266,29 @@ profile:
         assert "expr-injection-run" not in ids
 
 
+class TestExplainCommand:
+    def test_explain_known_pattern(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["explain", "expr-injection-run"])
+        assert result.exit_code == 0
+        assert "Expression injection" in result.output
+        assert "Mitigations:" in result.output
+        assert "CWE-78" in result.output
+
+    def test_explain_unknown_pattern(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["explain", "nonexistent-pattern"])
+        assert result.exit_code == 1
+        assert "Unknown pattern" in result.output
+
+    def test_explain_fuzzy_match(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["explain", "injection"])
+        assert result.exit_code == 1
+        assert "Did you mean:" in result.output
+        assert "expr-injection-run" in result.output
+
+
 class TestVersionFlag:
     def test_version(self) -> None:
         runner = CliRunner()

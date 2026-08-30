@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import click
 
@@ -173,3 +174,74 @@ def inventory(
 
     exit_code = 3 if inv.advisory_matches > 0 else 0
     raise SystemExit(exit_code)
+
+
+@main.command()
+@click.argument("pattern_id")
+@click.option(
+    "--patterns",
+    type=click.Path(exists=True, path_type=Path),
+    help="Custom pattern catalog path.",
+)
+def explain(pattern_id: str, patterns: Path | None) -> None:
+    """Show full details for a pattern by ID."""
+    from actionsieve.patterns import get_pattern, list_pattern_ids
+
+    pattern = get_pattern(pattern_id, path=patterns)
+    if pattern is None:
+        all_ids = list_pattern_ids(path=patterns)
+        click.echo(f"Unknown pattern: {pattern_id}", err=True)
+        matches = [pid for pid in all_ids if pattern_id in pid]
+        if matches:
+            click.echo("\nDid you mean:", err=True)
+            for m in matches:
+                click.echo(f"  {m}", err=True)
+        raise SystemExit(1)
+
+    _print_pattern(pattern)
+
+
+def _print_pattern(p: dict[str, Any]) -> None:
+    click.secho(str(p["id"]), bold=True)
+    click.echo(f"  {p['title']}")
+    click.echo()
+
+    desc = str(p.get("description", "")).strip()
+    if desc:
+        for line in desc.splitlines():
+            click.echo(f"  {line}")
+        click.echo()
+
+    platforms = p.get("platforms", "all")
+    click.echo(f"  Platforms:      {platforms}")
+    click.echo(f"  Severity:       {p['severity_base']}")
+    click.echo(f"  Attacker model: {p['attacker_model']}")
+    click.echo(f"  Impact:         {p['impact']}")
+    if p.get("cwe"):
+        click.echo(f"  CWE:            {p['cwe']}")
+    click.echo()
+
+    notes = str(p.get("severity_notes", "")).strip()
+    if notes:
+        click.secho("  Severity notes:", bold=True)
+        for line in notes.splitlines():
+            click.echo(f"    {line}")
+        click.echo()
+
+    mitigations = p.get("mitigations", [])
+    if mitigations:
+        click.secho("  Mitigations:", bold=True)
+        for m in mitigations:
+            click.echo(f"    - {m}")
+        click.echo()
+
+    refs = p.get("references", [])
+    if refs:
+        click.secho("  References:", bold=True)
+        for r in refs:
+            click.echo(f"    {r}")
+        click.echo()
+
+    tags = p.get("tags", [])
+    if tags:
+        click.echo(f"  Tags: {', '.join(str(t) for t in tags)}")

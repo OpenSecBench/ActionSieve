@@ -77,6 +77,21 @@ def _enforce_unique_ids(patterns: list[dict[str, Any]]) -> None:
         seen[pid] = i
 
 
+def get_pattern(
+    pattern_id: str,
+    path: Path | None = None,
+) -> dict[str, Any] | None:
+    patterns = load_patterns(path=path)
+    for p in patterns:
+        if p["id"] == pattern_id:
+            return p
+    return None
+
+
+def list_pattern_ids(path: Path | None = None) -> list[str]:
+    return [p["id"] for p in load_patterns(path=path)]
+
+
 def _filter_by_platform(
     patterns: list[dict[str, Any]],
     platform: str,
