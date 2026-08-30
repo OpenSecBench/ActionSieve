@@ -6,7 +6,7 @@ import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from actionsieve.matchers import match_structural
+from actionsieve.matchers import match_cross_step, match_structural
 
 if TYPE_CHECKING:
     from actionsieve.model import Job, Step, WorkflowModel
@@ -33,7 +33,7 @@ class Finding:
 
 _WARNED_TYPES: set[str] = set()
 
-SUPPORTED_TYPES = frozenset({"single_step", "structural", "supply_chain"})
+SUPPORTED_TYPES = frozenset({"single_step", "structural", "supply_chain", "cross_step"})
 
 
 def match(model: WorkflowModel, patterns: list[dict[str, Any]]) -> list[Finding]:
@@ -48,6 +48,8 @@ def match(model: WorkflowModel, patterns: list[dict[str, Any]]) -> list[Finding]
             findings.extend(match_structural(model, pattern, _make_finding))
         elif dtype == "supply_chain":
             findings.extend(_match_supply_chain(model, pattern))
+        elif dtype == "cross_step":
+            findings.extend(match_cross_step(model, pattern, _make_finding))
         elif dtype and dtype not in _WARNED_TYPES:
             _WARNED_TYPES.add(dtype)
             warnings.warn(

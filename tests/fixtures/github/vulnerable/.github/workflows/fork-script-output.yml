@@ -1,0 +1,16 @@
+name: PR Validation
+on: pull_request
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run validation script
+        id: validate
+        run: |
+          result=$(./scripts/validate.sh)
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+      - name: Report
+        run: |
+          echo "Validation: ${{ steps.validate.outputs.result }}"

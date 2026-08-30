@@ -1,0 +1,26 @@
+name: Matrix from filesystem
+on: pull_request
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      dirs: ${{ steps.list.outputs.dirs }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: List directories
+        id: list
+        run: |
+          dirs=$(node -e "console.log(JSON.stringify(require('fs').readdirSync('packages')))")
+          echo "dirs=$dirs" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: discover
+    strategy:
+      matrix:
+        dir: ${{ fromJson(needs.discover.outputs.dirs) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          echo "Building ${{ matrix.dir }}"
