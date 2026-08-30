@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from actionsieve.matchers_cloud import (
+    match_cloudbuild_default_sa,
+    match_cloudbuild_secret_in_env,
+    match_codebuild_exported_secrets,
+    match_codebuild_plaintext_secrets,
+    match_codebuild_privileged_mode,
+)
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -34,6 +42,11 @@ def match_structural(
         "fork-pr-cache-write": _match_fork_cache_write,
         "docker-plugin-privileged": _match_docker_plugin_privileged,
         "issue-comment-fork-checkout": _match_issue_comment_fork_checkout,
+        "codebuild-plaintext-secrets": match_codebuild_plaintext_secrets,
+        "codebuild-privileged-mode": match_codebuild_privileged_mode,
+        "codebuild-exported-secrets": match_codebuild_exported_secrets,
+        "cloudbuild-secret-in-env": match_cloudbuild_secret_in_env,
+        "cloudbuild-default-service-account": match_cloudbuild_default_sa,
     }
 
     matcher = dispatch.get(pid)

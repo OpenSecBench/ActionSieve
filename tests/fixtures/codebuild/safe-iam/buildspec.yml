@@ -1,0 +1,31 @@
+version: 0.2
+
+env:
+  variables:
+    NODE_ENV: production
+    BUILD_TYPE: release
+  parameter-store:
+    DB_PASSWORD: /prod/db-password
+    API_TOKEN: /prod/api-token
+  secrets-manager:
+    DEPLOY_KEY: prod/deploy-key:apiKey
+  exported-variables:
+    - NODE_ENV
+    - BUILD_TYPE
+
+phases:
+  install:
+    commands:
+      - npm ci
+
+  build:
+    commands:
+      - npm run build
+
+  post_build:
+    commands:
+      - npm run deploy
+
+artifacts:
+  files:
+    - dist/**/*

@@ -50,8 +50,9 @@ actionsieve/
   search.py       — forge-wide code search (GitHub/GitLab API, clone-and-scan)
   model.py        — normalized WorkflowModel dataclasses (platform-agnostic)
   engine.py       — pattern matching against WorkflowModel
-  matchers.py     — structural pattern matchers
-  cross_step.py   — cross-step chain-based matchers
+  matchers.py       — structural pattern matchers
+  matchers_cloud.py — cloud-native CI IAM/secret misconfig matchers
+  cross_step.py     — cross-step chain-based matchers
   chains.py       — cross-step/job data flow analysis
   severity.py     — two-stage severity: static context + environment profile
   profiles.py     — environment profile loader + built-in presets

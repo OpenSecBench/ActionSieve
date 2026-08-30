@@ -1,0 +1,33 @@
+version: 0.2
+
+env:
+  variables:
+    NODE_ENV: production
+    DB_PASSWORD: supersecret123
+    API_TOKEN: tok_live_abc123
+  parameter-store:
+    DEPLOY_KEY: /prod/deploy-key
+  secrets-manager:
+    SIGNING_SECRET: prod/signing:secret
+  privilegedMode: true
+  exported-variables:
+    - NODE_ENV
+    - DEPLOY_KEY
+    - SIGNING_SECRET
+
+phases:
+  install:
+    commands:
+      - npm ci
+
+  build:
+    commands:
+      - npm run build
+
+  post_build:
+    commands:
+      - npm run deploy
+
+artifacts:
+  files:
+    - dist/**/*

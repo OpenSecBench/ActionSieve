@@ -1,0 +1,149 @@
+patterns:
+
+  - id: codebuild-plaintext-secrets
+    title: CodeBuild secrets in plaintext env.variables
+    description: |
+      Secrets are stored in the buildspec env.variables section, which
+      embeds values directly in the YAML file. Anyone with read access
+      to the repo can see them. Use env.parameter-store or
+      env.secrets-manager to reference external secret stores instead.
+    platforms: [codebuild]
+    trigger: [any]
+    trust_boundary: source_repo -> build_environment
+    attacker_model: contributor
+    impact: [secret_exfil]
+    severity_base: high
+    requires_self_hosted: false
+    severity_notes: |
+      High because the secrets are visible in plaintext to anyone who
+      can read the buildspec file. Severity is critical if the repo is
+      public.
+    detection:
+      type: structural
+    mitigations:
+      - Move secrets to AWS Systems Manager Parameter Store (env.parameter-store)
+      - Move secrets to AWS Secrets Manager (env.secrets-manager)
+      - Never store credentials, tokens, or passwords in env.variables
+    cwe: CWE-312
+    tags: [secret-exposure, codebuild, iam, cloud-native]
+    status: active
+
+  - id: codebuild-privileged-mode
+    title: CodeBuild privileged mode enabled
+    description: |
+      The buildspec sets env.privilegedMode to true, granting the build
+      container root-level access to the underlying host. This is
+      required for Docker-in-Docker builds but enables container escape
+      on shared build infrastructure. Webhook-triggered builds are
+      especially risky as attacker-controlled code runs with elevated
+      privileges.
+    platforms: [codebuild]
+    trigger: [any]
+    trust_boundary: build_container -> host
+    attacker_model: fork_pr
+    impact: [rce]
+    severity_base: medium
+    requires_self_hosted: false
+    severity_notes: |
+      Medium because managed CodeBuild environments are ephemeral.
+      Elevates to high if the project uses shared build fleets or
+      custom VPC configurations where container escape has lateral
+      movement potential.
+    detection:
+      type: structural
+    mitigations:
+      - Use AWS managed Docker images that support rootless builds
+      - Restrict privilegedMode to dedicated build projects
+      - Use separate CodeBuild projects for untrusted input (PRs)
+    cwe: CWE-250
+    tags: [privilege-escalation, codebuild, container-escape, cloud-native]
+    status: active
+
+  - id: codebuild-exported-secrets
+    title: CodeBuild exports secrets to downstream stages
+    description: |
+      The buildspec env.exported-variables list includes variables
+      sourced from parameter-store or secrets-manager. Exported
+      variables are passed to downstream CodePipeline stages in
+      plaintext, breaking the secret store boundary and exposing
+      credentials to stages that should not have access.
+    platforms: [codebuild]
+    trigger: [any]
+    trust_boundary: secret_store -> codepipeline
+    attacker_model: contributor
+    impact: [secret_exfil]
+    severity_base: high
+    requires_self_hosted: false
+    severity_notes: |
+      High because secrets cross a trust boundary — they leave the
+      secure store and become plaintext pipeline variables visible to
+      other stages, actions, and logs.
+    detection:
+      type: structural
+    mitigations:
+      - Remove secret variable names from exported-variables
+      - Have downstream stages fetch their own secrets directly
+      - Audit CodePipeline stage permissions to limit blast radius
+    cwe: CWE-200
+    tags: [secret-exposure, codebuild, codepipeline, cloud-native]
+    status: active
+
+  - id: cloudbuild-secret-in-env
+    title: Cloud Build secrets in step environment variables
+    description: |
+      A Cloud Build step passes secret-like values through plain
+      environment variables instead of using availableSecrets with
+      Secret Manager. Plain env vars are logged, visible in build
+      history, and stored in the build metadata. Secret Manager
+      integration mounts secrets as files or env vars at runtime
+      without exposing them in the build config.
+    platforms: [cloudbuild]
+    trigger: [any]
+    trust_boundary: source_repo -> build_environment
+    attacker_model: contributor
+    impact: [secret_exfil]
+    severity_base: high
+    requires_self_hosted: false
+    severity_notes: |
+      High because step env vars in cloudbuild.yaml are committed to
+      source control and visible in Cloud Build logs. Severity is
+      critical if the repo is public.
+    detection:
+      type: structural
+    mitigations:
+      - Use availableSecrets.secretManager to reference Secret Manager secrets
+      - Mount secrets as environment variables via secretEnv in step config
+      - Never embed credentials directly in cloudbuild.yaml env lists
+    cwe: CWE-312
+    tags: [secret-exposure, cloudbuild, iam, cloud-native]
+    status: active
+
+  - id: cloudbuild-default-service-account
+    title: Cloud Build using default service account
+    description: |
+      The cloudbuild.yaml does not specify a serviceAccount field.
+      Builds run under the default Cloud Build service account, which
+      by default has the Editor role — far more permissions than most
+      builds need. A compromised build step can leverage these broad
+      permissions for lateral movement across GCP resources.
+    platforms: [cloudbuild]
+    trigger: [any]
+    trust_boundary: build_environment -> gcp_project
+    attacker_model: contributor
+    impact: [rce, secret_exfil]
+    severity_base: low
+    requires_self_hosted: false
+    severity_notes: |
+      Low by default because many projects legitimately use the
+      default SA. Elevates to medium when the build processes
+      untrusted input or runs in a shared GCP project with sensitive
+      resources.
+    detection:
+      type: structural
+    mitigations:
+      - Set serviceAccount to a custom SA with minimum required permissions
+      - Follow the principle of least privilege for build service accounts
+      - Use Workload Identity Federation for cross-project access
+    cwe: CWE-250
+    tags: [iam, cloudbuild, least-privilege, cloud-native]
+    status: active

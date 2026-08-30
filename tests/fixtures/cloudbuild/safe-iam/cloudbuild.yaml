@@ -1,0 +1,24 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - build
+      - -t
+      - 'gcr.io/$PROJECT_ID/app:$COMMIT_SHA'
+      - .
+    secretEnv:
+      - DB_PASSWORD
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - push
+      - 'gcr.io/$PROJECT_ID/app:$COMMIT_SHA'
+
+serviceAccount: 'projects/myproject/serviceAccounts/ci-builder@myproject.iam.gserviceaccount.com'
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/myproject/secrets/db-password/versions/latest
+      env: DB_PASSWORD
+
+images:
+  - 'gcr.io/$PROJECT_ID/app:$COMMIT_SHA'

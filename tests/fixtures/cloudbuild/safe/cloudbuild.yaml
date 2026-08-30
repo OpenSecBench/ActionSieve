@@ -11,5 +11,7 @@ steps:
       - push
       - 'gcr.io/$PROJECT_ID/app:$COMMIT_SHA'
 
+serviceAccount: 'projects/myproject/serviceAccounts/ci@myproject.iam.gserviceaccount.com'
+
 images:
   - 'gcr.io/$PROJECT_ID/app:$COMMIT_SHA'

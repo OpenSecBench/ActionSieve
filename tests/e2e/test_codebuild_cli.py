@@ -8,6 +8,8 @@ from actionsieve.cli import main
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "codebuild"
 VULN = str(FIXTURES / "vulnerable")
 SAFE = str(FIXTURES / "safe")
+VULN_IAM = str(FIXTURES / "vulnerable-iam")
+SAFE_IAM = str(FIXTURES / "safe-iam")
 
 
 def _scan(args: list[str]) -> dict[str, object]:
@@ -45,3 +47,30 @@ class TestCodeBuildScan:
         data = json.loads(result.output)
         assert data["version"] == "2.1.0"
         assert len(data["runs"][0]["results"]) > 0
+
+
+class TestCodeBuildIAMMisconfig:
+    def test_plaintext_secrets_detected(self) -> None:
+        data = _scan(["scan", "--platform", "codebuild", VULN_IAM])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "codebuild-plaintext-secrets" in ids
+
+    def test_privileged_mode_detected(self) -> None:
+        data = _scan(["scan", "--platform", "codebuild", VULN_IAM])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "codebuild-privileged-mode" in ids
+
+    def test_exported_secrets_detected(self) -> None:
+        data = _scan(["scan", "--platform", "codebuild", VULN_IAM])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "codebuild-exported-secrets" in ids
+
+    def test_safe_iam_clean(self) -> None:
+        data = _scan(["scan", "--platform", "codebuild", SAFE_IAM])
+        iam_ids = [
+            f["pattern_id"]
+            for f in data["findings"]
+            if f["pattern_id"].startswith("codebuild-")
+            and f["pattern_id"] != "codebuild-env-injection"
+        ]
+        assert iam_ids == []

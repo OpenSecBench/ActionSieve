@@ -8,6 +8,8 @@ from actionsieve.cli import main
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "cloudbuild"
 VULN = str(FIXTURES / "vulnerable")
 SAFE = str(FIXTURES / "safe")
+VULN_IAM = str(FIXTURES / "vulnerable-iam")
+SAFE_IAM = str(FIXTURES / "safe-iam")
 
 
 def _scan(args: list[str]) -> dict[str, object]:
@@ -55,3 +57,25 @@ class TestCloudBuildScan:
         data = _scan(["scan", "--platform", "cloudbuild", VULN])
         ids = [f["pattern_id"] for f in data["findings"]]
         assert "static-cloud-credentials" in ids
+
+
+class TestCloudBuildIAMMisconfig:
+    def test_secret_in_env_detected(self) -> None:
+        data = _scan(["scan", "--platform", "cloudbuild", VULN_IAM])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "cloudbuild-secret-in-env" in ids
+
+    def test_default_service_account_detected(self) -> None:
+        data = _scan(["scan", "--platform", "cloudbuild", VULN_IAM])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "cloudbuild-default-service-account" in ids
+
+    def test_safe_iam_no_secret_in_env(self) -> None:
+        data = _scan(["scan", "--platform", "cloudbuild", SAFE_IAM])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "cloudbuild-secret-in-env" not in ids
+
+    def test_safe_iam_has_service_account(self) -> None:
+        data = _scan(["scan", "--platform", "cloudbuild", SAFE_IAM])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "cloudbuild-default-service-account" not in ids
