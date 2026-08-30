@@ -20,6 +20,7 @@ pipelines:
             - npm test
       - step:
           name: Deploy Preview
+          deployment: staging
           runs-on:
             - self.hosted
             - linux
@@ -30,6 +31,7 @@ pipelines:
     deploy-prod:
       - step:
           name: Production Deploy
+          deployment: production
           script:
             - pipe: atlassian/aws-s3-deploy:1
               variables:

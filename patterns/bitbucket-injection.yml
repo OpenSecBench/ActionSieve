@@ -37,3 +37,39 @@ patterns:
     cwe: CWE-78
     tags: [injection, bitbucket, environment-variable]
     status: active
+
+  - id: bitbucket-deployment-exposed
+    title: Deployment environment accessible from fork PR builds
+    description: |
+      A Bitbucket Pipelines step declares a deployment environment
+      (deployment: production, staging, etc.) and is reachable from
+      fork PR builds. Deployment variables scoped to that environment
+      may be exposed to the fork author if "Pipelines" is enabled for
+      fork PRs in repo settings.
+    platforms: [bitbucket]
+    trigger: [pull_request]
+    trust_boundary: fork_pr_execution -> deployment_secrets
+    attacker_model: fork_pr
+    impact: [secret_exfil]
+    severity_base: high
+    requires_self_hosted: false
+    severity_notes: |
+      Bitbucket disables fork PR builds by default and does not pass
+      secrets to fork builds even when enabled. Deployment variables
+      require explicit environment configuration. Risk depends on
+      repo settings and whether deployment restrictions are configured.
+    detection:
+      type: structural
+      grep_patterns:
+        - 'deployment:'
+      checks:
+        - job_has_secrets: true
+        - fork_reachable: true
+    mitigations:
+      - Disable fork PR builds unless required
+      - Configure deployment environment restrictions (branch limits)
+      - Do not use deployment environments in PR-triggered pipelines
+      - Use separate environments for CI and production
+    cwe: CWE-200
+    tags: [secrets, bitbucket, deployment, fork]
+    status: active

@@ -42,6 +42,11 @@ class TestBitbucketScan:
         ids = [f["pattern_id"] for f in data["findings"]]
         assert "bitbucket-env-injection" in ids
 
+    def test_deployment_exposed_detected(self) -> None:
+        data = _scan(["scan", "--platform", "bitbucket", VULN])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "bitbucket-deployment-exposed" in ids
+
     def test_sarif_output(self) -> None:
         result = CliRunner().invoke(
             main,

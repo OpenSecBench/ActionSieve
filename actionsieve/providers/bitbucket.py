@@ -234,11 +234,17 @@ def _parse_step_as_job(job_id: str, data: dict[str, Any], lines: list[str]) -> J
     steps = _parse_scripts(data, lines)
     pipe_steps = _parse_pipes(data, lines, len(steps))
 
+    deployment = data.get("deployment")
+    secrets: list[str] = []
+    if isinstance(deployment, str):
+        secrets.append(f"deployment:{deployment}")
+
     return Job(
         id=job_id,
         runner=runner,
         name=str(name),
         steps=steps + pipe_steps,
+        secrets_referenced=secrets,
     )
 
 

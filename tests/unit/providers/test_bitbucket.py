@@ -235,6 +235,59 @@ pipelines:
         assert ref.owner == "myregistry"
 
 
+class TestDeployment:
+    def test_deployment_populates_secrets(
+        self, provider: BitbucketProvider, tmp_path: Path
+    ) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+pipelines:
+  default:
+    - step:
+        deployment: production
+        script:
+          - deploy.sh
+""",
+        )
+        wf = provider.parse(p)
+        assert wf.jobs[0].secrets_referenced == ["deployment:production"]
+
+    def test_no_deployment_empty_secrets(
+        self, provider: BitbucketProvider, tmp_path: Path
+    ) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+pipelines:
+  default:
+    - step:
+        script:
+          - npm test
+""",
+        )
+        wf = provider.parse(p)
+        assert wf.jobs[0].secrets_referenced == []
+
+    def test_deployment_in_pr_pipeline(self, provider: BitbucketProvider, tmp_path: Path) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+pipelines:
+  pull-requests:
+    '**':
+      - step:
+          deployment: staging
+          script:
+            - deploy-preview.sh
+""",
+        )
+        wf = provider.parse(p)
+        assert wf.jobs[0].secrets_referenced == ["deployment:staging"]
+        pr_triggers = [t for t in wf.triggers if t.event == "pull_request"]
+        assert pr_triggers[0].is_fork_reachable is True
+
+
 class TestExpressions:
     def test_tainted_branch_var(self, provider: BitbucketProvider, tmp_path: Path) -> None:
         p = _write_config(
