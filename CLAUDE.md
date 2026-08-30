@@ -47,6 +47,8 @@ actionsieve/
   scanner.py      — orchestrates scan: find files → parse → match → score → output
   model.py        — normalized WorkflowModel dataclasses (platform-agnostic)
   engine.py       — pattern matching against WorkflowModel
+  matchers.py     — structural pattern matchers
+  cross_step.py   — cross-step chain-based matchers
   chains.py       — cross-step/job data flow analysis
   severity.py     — two-stage severity: static context + environment profile
   profiles.py     — environment profile loader + built-in presets
