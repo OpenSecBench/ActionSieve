@@ -1,0 +1,36 @@
+image: node:20
+
+pipelines:
+  default:
+    - step:
+        name: Build
+        script:
+          - echo "Building $BITBUCKET_BRANCH"
+          - npm install
+          - pipe: myorg/deploy-pipe:1
+            variables:
+              BRANCH: $BITBUCKET_BRANCH
+
+  pull-requests:
+    '**':
+      - step:
+          name: PR Check
+          script:
+            - echo "PR from ${BITBUCKET_BRANCH}"
+            - npm test
+      - step:
+          name: Deploy Preview
+          runs-on:
+            - self.hosted
+            - linux
+          script:
+            - ./deploy-preview.sh $BITBUCKET_BRANCH
+
+  custom:
+    deploy-prod:
+      - step:
+          name: Production Deploy
+          script:
+            - pipe: atlassian/aws-s3-deploy:1
+              variables:
+                AWS_DEFAULT_REGION: us-east-1

@@ -166,24 +166,24 @@
 ## Phase 7: Additional platforms
 
 ### CircleCI
-- [ ] `providers/circleci.py` — detect `.circleci/config.yml`, parse to WorkflowModel
-- [ ] Orb references as ComponentRef (supply chain vector — unpinned orbs, volatile tags)
+- [x] `providers/circleci.py` — detect `.circleci/config.yml`, parse to WorkflowModel
+- [x] Orb references as ComponentRef (supply chain vector — unpinned orbs, volatile tags)
 - [ ] Context-based secret scoping analysis
-- [ ] Expression injection in `run:` steps (environment variable interpolation)
+- [x] Expression injection in `run:` steps (environment variable interpolation)
 - [ ] `config.yml` processing/dynamic config (`setup: true`, continuation orb)
-- [ ] CircleCI fixtures (vulnerable + safe)
-- [ ] CircleCI-specific patterns (orb trust, context leaks, self-hosted runner)
-- [ ] Unit + E2E tests
+- [x] CircleCI fixtures (vulnerable + safe)
+- [x] CircleCI-specific patterns (orb trust, context leaks, self-hosted runner)
+- [x] Unit + E2E tests
 
 ### Bitbucket Pipelines
-- [ ] `providers/bitbucket.py` — detect `bitbucket-pipelines.yml`, parse to WorkflowModel
-- [ ] Pipe references as ComponentRef (supply chain — unpinned pipe tags)
-- [ ] Variable injection in `script:` steps
-- [ ] Self-hosted runner detection (Bitbucket Runners)
+- [x] `providers/bitbucket.py` — detect `bitbucket-pipelines.yml`, parse to WorkflowModel
+- [x] Pipe references as ComponentRef (supply chain — unpinned pipe tags)
+- [x] Variable injection in `script:` steps
+- [x] Self-hosted runner detection (Bitbucket Runners)
 - [ ] Repository variable / deployment variable scoping
-- [ ] Bitbucket fixtures (vulnerable + safe)
-- [ ] Bitbucket-specific patterns (pipe trust, variable injection)
-- [ ] Unit + E2E tests
+- [x] Bitbucket fixtures (vulnerable + safe)
+- [x] Bitbucket-specific patterns (pipe trust, variable injection)
+- [x] Unit + E2E tests
 
 ### Buildkite
 - [ ] `providers/buildkite.py` — detect `pipeline.yml` / `.buildkite/`, parse to WorkflowModel

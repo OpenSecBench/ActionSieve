@@ -1,0 +1,19 @@
+image: node:20
+
+pipelines:
+  default:
+    - step:
+        name: Build
+        script:
+          - npm install
+          - npm run build
+          - pipe: atlassian/aws-s3-deploy:1.2.3
+            variables:
+              AWS_DEFAULT_REGION: us-east-1
+
+  branches:
+    main:
+      - step:
+          name: Deploy
+          script:
+            - npm run deploy

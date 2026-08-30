@@ -37,6 +37,7 @@ class Provider(Protocol):
 
 def _get_providers() -> list[Provider]:
     from actionsieve.providers.azure import AzureProvider
+    from actionsieve.providers.bitbucket import BitbucketProvider
     from actionsieve.providers.circleci import CircleCIProvider
     from actionsieve.providers.github import GitHubProvider
     from actionsieve.providers.gitlab import GitLabProvider
@@ -46,6 +47,7 @@ def _get_providers() -> list[Provider]:
         GitLabProvider(),
         AzureProvider(),
         CircleCIProvider(),
+        BitbucketProvider(),
     ]
     try:
         from actionsieve.providers.jenkins import JenkinsProvider

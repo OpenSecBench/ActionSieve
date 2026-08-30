@@ -1,0 +1,39 @@
+patterns:
+
+  - id: bitbucket-env-injection
+    title: Tainted environment variable in script block
+    description: |
+      A Bitbucket Pipelines script step interpolates an attacker-controlled
+      environment variable ($BITBUCKET_BRANCH, $BITBUCKET_TAG) directly into
+      a shell command. Fork PR authors control branch names; shell
+      metacharacters in the value produce command injection.
+    platforms: [bitbucket]
+    trigger: [pull_request]
+    trust_boundary: untrusted_user_input -> shell_execution
+    attacker_model: fork_pr
+    impact: [rce]
+    severity_base: high
+    requires_self_hosted: false
+    severity_notes: |
+      Bitbucket disables fork PR builds by default. When enabled,
+      secrets are not passed to fork builds. Self-hosted runners
+      (runs-on: self.hosted) may have cached credentials.
+    detection:
+      type: single_step
+      in_block: run
+      grep_patterns:
+        - '$BITBUCKET_BRANCH'
+        - '${BITBUCKET_BRANCH}'
+        - '$BITBUCKET_TAG'
+        - '${BITBUCKET_TAG}'
+        - '$BITBUCKET_BOOKMARK'
+        - '${BITBUCKET_BOOKMARK}'
+        - '$BITBUCKET_PR_DESTINATION_BRANCH'
+        - '${BITBUCKET_PR_DESTINATION_BRANCH}'
+    mitigations:
+      - Quote variables in shell commands
+      - Use pipe variables instead of inline interpolation
+      - Disable fork PR builds if not needed
+    cwe: CWE-78
+    tags: [injection, bitbucket, environment-variable]
+    status: active
