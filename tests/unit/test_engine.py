@@ -319,6 +319,33 @@ class TestForkCacheWrite:
         assert len(cache_findings) == 0
 
 
+class TestDockerPluginPrivileged:
+    def test_detects_privileged_plugin(self) -> None:
+        from actionsieve.providers.buildkite import BuildkiteProvider
+
+        provider = BuildkiteProvider()
+        model = provider.parse(
+            FIXTURES.parent / "buildkite" / "vulnerable" / ".buildkite" / "pipeline.yml"
+        )
+        patterns = load_patterns(platform="buildkite")
+        findings = match(model, patterns)
+        plugin_findings = [f for f in findings if f.pattern_id == "docker-plugin-privileged"]
+        assert len(plugin_findings) >= 1
+        assert any("privileged" in e for f in plugin_findings for e in f.evidence)
+
+    def test_detects_socket_mount(self) -> None:
+        from actionsieve.providers.buildkite import BuildkiteProvider
+
+        provider = BuildkiteProvider()
+        model = provider.parse(
+            FIXTURES.parent / "buildkite" / "vulnerable" / ".buildkite" / "pipeline.yml"
+        )
+        patterns = load_patterns(platform="buildkite")
+        findings = match(model, patterns)
+        plugin_findings = [f for f in findings if f.pattern_id == "docker-plugin-privileged"]
+        assert any("socket" in e for f in plugin_findings for e in f.evidence)
+
+
 class TestNoFalsePositivesOnSafe:
     def test_env_indirection(self) -> None:
         findings = _scan("safe/.github/workflows/env-indirection.yml")

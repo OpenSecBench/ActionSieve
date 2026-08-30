@@ -9,8 +9,24 @@ steps:
 
   - label: ":rocket: Deploy"
     command: echo "Deploying ${BUILDKITE_MESSAGE}"
-    agents:
-      queue: deploy
+
+  - label: ":memo: Changelog"
+    command: echo "$BUILDKITE_PULL_REQUEST_TITLE"
+
+  - label: ":whale: Privileged Docker"
+    command: npm run build
+    plugins:
+      - docker#v5.11.0:
+          image: node:20
+          privileged: true
+
+  - label: ":socket: Socket Mount"
+    command: npm run build
+    plugins:
+      - docker#v5.11.0:
+          image: node:20
+          volumes:
+            - "/var/run/docker.sock:/var/run/docker.sock"
 
   - label: ":pipeline: Upload"
     command: buildkite-agent pipeline upload .buildkite/dynamic.yml

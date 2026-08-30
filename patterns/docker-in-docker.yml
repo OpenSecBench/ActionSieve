@@ -39,3 +39,33 @@ patterns:
     cwe: CWE-250
     tags: [privilege-escalation, docker, container-escape]
     status: active
+
+  - id: docker-plugin-privileged
+    title: Docker plugin with privileged mode or socket mount
+    description: |
+      A CI step uses a Docker plugin (e.g. Buildkite docker#) with
+      privileged: true or mounts the Docker socket via volumes.
+      Both grant the container full host access — equivalent to
+      running as root on the host machine.
+    platforms: [buildkite]
+    trigger: [any]
+    trust_boundary: ci_step -> host_docker_daemon
+    attacker_model: contributor
+    impact: [rce]
+    severity_base: medium
+    requires_self_hosted: false
+    severity_notes: |
+      The Docker plugin is Buildkite's idiomatic way to run containers.
+      privileged: true enables all Linux capabilities and device access.
+      Socket mounts allow arbitrary container creation on the host.
+      Risk is higher on persistent self-hosted agents.
+    detection:
+      type: structural
+    mitigations:
+      - "Remove privileged: true unless absolutely required"
+      - Avoid mounting the Docker socket into containers
+      - Use rootless Docker or isolated build agents
+      - Restrict plugin configuration via agent hooks
+    cwe: CWE-250
+    tags: [privilege-escalation, docker, container-escape, buildkite]
+    status: active

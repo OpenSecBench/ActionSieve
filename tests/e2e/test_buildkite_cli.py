@@ -47,6 +47,18 @@ class TestBuildkiteScan:
         ids = [f["pattern_id"] for f in data["findings"]]
         assert "mutable-action-ref" in ids
 
+    def test_pr_title_injection_detected(self) -> None:
+        data = _scan(["scan", "--platform", "buildkite", VULN])
+        pid = "buildkite-env-injection"
+        env_findings = [f for f in data["findings"] if f["pattern_id"] == pid]
+        evidence = [e for f in env_findings for e in f["evidence"]]
+        assert any("PULL_REQUEST_TITLE" in e for e in evidence)
+
+    def test_docker_plugin_privileged_detected(self) -> None:
+        data = _scan(["scan", "--platform", "buildkite", VULN])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "docker-plugin-privileged" in ids
+
     def test_sarif_output(self) -> None:
         result = CliRunner().invoke(
             main,

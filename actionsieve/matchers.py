@@ -32,6 +32,7 @@ def match_structural(
         "checkout-persists-credentials": _match_checkout_persists_creds,
         "unpinned-container-image": _match_unpinned_image,
         "fork-pr-cache-write": _match_fork_cache_write,
+        "docker-plugin-privileged": _match_docker_plugin_privileged,
     }
 
     matcher = dispatch.get(pid)
@@ -386,3 +387,34 @@ def _match_fork_cache_write(
         for step in job.steps
         if _is_cache_write(step)
     ]
+
+
+def _match_docker_plugin_privileged(
+    model: WorkflowModel, pattern: dict[str, Any], make_finding: MakeFinding
+) -> list[Finding]:
+    findings: list[Finding] = []
+    for job in model.jobs:
+        for step in job.steps:
+            if step.type != "action" or not step.action_ref:
+                continue
+            name = step.action_ref.name.lower()
+            if "docker" not in name:
+                continue
+            evidence: list[str] = []
+            if step.inputs.get("privileged", "").lower() == "true":
+                evidence.append("Docker plugin with privileged: true")
+            volumes = step.inputs.get("volumes", "")
+            if "/var/run/docker.sock" in volumes:
+                evidence.append("Docker plugin mounts docker socket")
+            if evidence:
+                findings.append(
+                    make_finding(
+                        pattern=pattern,
+                        model=model,
+                        job=job,
+                        step=step,
+                        evidence=evidence,
+                        line=step.action_ref.line,
+                    )
+                )
+    return findings

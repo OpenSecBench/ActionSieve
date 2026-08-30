@@ -306,6 +306,34 @@ steps:
         assert len(tainted) == 1
         assert tainted[0].context_path == "BUILDKITE_MESSAGE"
 
+    def test_tainted_pr_title_var(self, provider: BuildkiteProvider, tmp_path: Path) -> None:
+        p = _write_pipeline(
+            tmp_path,
+            """\
+steps:
+  - command: echo "$BUILDKITE_PULL_REQUEST_TITLE"
+""",
+        )
+        wf = provider.parse(p)
+        step = wf.jobs[0].steps[0]
+        tainted = [e for e in step.expressions if e.is_tainted]
+        assert len(tainted) == 1
+        assert tainted[0].context_path == "BUILDKITE_PULL_REQUEST_TITLE"
+
+    def test_tainted_pr_description_var(self, provider: BuildkiteProvider, tmp_path: Path) -> None:
+        p = _write_pipeline(
+            tmp_path,
+            """\
+steps:
+  - command: echo "${BUILDKITE_PULL_REQUEST_DESCRIPTION}"
+""",
+        )
+        wf = provider.parse(p)
+        step = wf.jobs[0].steps[0]
+        tainted = [e for e in step.expressions if e.is_tainted]
+        assert len(tainted) == 1
+        assert tainted[0].context_path == "BUILDKITE_PULL_REQUEST_DESCRIPTION"
+
     def test_safe_command(self, provider: BuildkiteProvider, tmp_path: Path) -> None:
         p = _write_pipeline(
             tmp_path,
