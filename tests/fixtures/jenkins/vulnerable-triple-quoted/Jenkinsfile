@@ -1,0 +1,18 @@
+pipeline {
+    agent {
+        docker { image 'gradle:8' }
+    }
+    parameters {
+        string(name: 'buildArgs', defaultValue: '')
+    }
+    stages {
+        stage('Build') {
+            steps {
+                sh """
+                    gradle build ${params.buildArgs}
+                    gradle test
+                """
+            }
+        }
+    }
+}

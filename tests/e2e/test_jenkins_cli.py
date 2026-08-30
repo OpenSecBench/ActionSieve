@@ -9,6 +9,7 @@ FIXTURES = Path(__file__).parent.parent / "fixtures" / "jenkins"
 SCRIPTED_VULN = FIXTURES / "vulnerable-scripted"
 SCRIPTED_SAFE = FIXTURES / "safe-scripted"
 SCRIPT_BLOCK = FIXTURES / "vulnerable-script-block"
+TRIPLE_QUOTED = FIXTURES / "vulnerable-triple-quoted"
 
 
 class TestJenkinsScan:
@@ -102,3 +103,13 @@ class TestScriptBlock:
         data = json.loads(result.output)
         ids = [f["pattern_id"] for f in data["findings"]]
         assert "jenkins-change-injection" in ids
+
+
+class TestTripleQuoted:
+    def test_triple_quoted_finds_injection(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["scan", "--platform", "jenkins", str(TRIPLE_QUOTED)])
+        assert result.exit_code != 0
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "jenkins-parameter-injection" in ids

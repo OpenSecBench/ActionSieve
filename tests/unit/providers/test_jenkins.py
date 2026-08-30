@@ -610,3 +610,80 @@ pipeline {
         steps = [s for s in wf.jobs[0].steps if s.type == "shell"]
         assert len(steps) == 1
         assert "params.X" in (steps[0].shell_command or "")
+
+
+class TestDslBlockStripping:
+    def test_parameters_block_stripped(self, provider: JenkinsProvider, tmp_path: Path) -> None:
+        p = _write_jenkinsfile(
+            tmp_path,
+            """\
+pipeline {
+    agent any
+    parameters {
+        string(name: 'buildArgs', defaultValue: '')
+    }
+    stages {
+        stage('Build') {
+            steps {
+                sh 'echo hi'
+            }
+        }
+    }
+}
+""",
+        )
+        wf = provider.parse(p)
+        assert len(wf.jobs) == 1
+        assert wf.jobs[0].steps[0].shell_command == "echo hi"
+
+    def test_options_block_stripped(self, provider: JenkinsProvider, tmp_path: Path) -> None:
+        p = _write_jenkinsfile(
+            tmp_path,
+            """\
+pipeline {
+    agent any
+    options {
+        timeout(time: 1, unit: 'HOURS')
+        disableConcurrentBuilds()
+    }
+    stages {
+        stage('Build') {
+            steps {
+                sh 'echo hi'
+            }
+        }
+    }
+}
+""",
+        )
+        wf = provider.parse(p)
+        assert len(wf.jobs) == 1
+
+    def test_triple_quoted_injection_detected(
+        self, provider: JenkinsProvider, tmp_path: Path
+    ) -> None:
+        p = _write_jenkinsfile(
+            tmp_path,
+            '''\
+pipeline {
+    agent any
+    parameters {
+        string(name: 'buildArgs', defaultValue: '')
+    }
+    stages {
+        stage('Build') {
+            steps {
+                sh """
+                    gradle build ${params.buildArgs}
+                """
+            }
+        }
+    }
+}
+''',
+        )
+        wf = provider.parse(p)
+        steps = [s for s in wf.jobs[0].steps if s.type == "shell"]
+        assert len(steps) == 1
+        tainted = [e for e in steps[0].expressions if e.is_tainted]
+        assert len(tainted) >= 1

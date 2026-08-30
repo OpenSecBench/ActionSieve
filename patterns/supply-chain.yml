@@ -8,7 +8,7 @@ patterns:
       maintainer's account is compromised or the repo taken over, the
       ref can be moved to malicious code. All workflows using the mutable
       ref execute compromised code on next run.
-    platforms: [github]
+    platforms: "all"
     trigger: [any]
     trust_boundary: third_party_action_supply_chain
     attacker_model: action_maintainer_compromise

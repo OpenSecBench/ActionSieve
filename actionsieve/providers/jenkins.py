@@ -34,6 +34,8 @@ JENKINSFILE_NAMES = ("Jenkinsfile", "Jenkinsfile.groovy")
 INTERPOLATION_RE = re.compile(r"\$\{([^}]+)\}")
 GSTRING_VAR_RE = re.compile(r"\$(\w[\w.]*)")
 
+DSL_BLOCKS_RE = re.compile(r"^\s*(?:parameters|options|triggers)\s*\{", re.MULTILINE)
+
 TAINTED_CONTEXTS = (
     "params.",
     "env.BRANCH_NAME",
@@ -61,7 +63,7 @@ class JenkinsProvider:
             raise ParseError(f"File exceeds {MAX_FILE_SIZE} byte limit: {file_path}")
 
         text = file_path.read_text(encoding="utf-8")
-        tree = parse_groovy(text)
+        tree = parse_groovy(_strip_dsl_blocks(text))
         info = extract_pipeline_info(tree)
         lines = text.splitlines()
 
@@ -122,6 +124,25 @@ class JenkinsProvider:
 
     def search_query(self, pattern: dict[str, object]) -> str | None:
         return None
+
+
+def _strip_dsl_blocks(text: str) -> str:
+    result = text
+    for m in reversed(list(DSL_BLOCKS_RE.finditer(result))):
+        brace_start = result.index("{", m.start())
+        depth = 0
+        end = brace_start
+        for i in range(brace_start, len(result)):
+            if result[i] == "{":
+                depth += 1
+            elif result[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        newlines = result[m.start() : end].count("\n")
+        result = result[: m.start()] + ("\n" * newlines) + result[end:]
+    return result
 
 
 def _to_component_ref(lib: LibraryRef) -> ComponentRef:
