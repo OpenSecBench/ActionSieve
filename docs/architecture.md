@@ -51,6 +51,7 @@ inventory, and supply chain risk assessment.
 | **Gato-X** (`AdnaneKhan/gato-x`) | Offensive GHA enumeration + exploitation | Finds pwn requests, injection, TOCTOU, self-hosted takeover. Scans 35-40K repos in 1-2 hours. Cross-repo workflow analysis. | Requires API access. Fixed ruleset. Focused on exploitation, not audit/compliance. |
 | **poutine** (`boostsecurityio/poutine`) | SAST for GHA and GitLab CI | Detects actions with known CVEs, unverified creators. Org-wide scanning. Multi-platform (GHA + GitLab). | No multi-step chain detection. No custom patterns. No Azure/Jenkins. |
 | **abom** (`JulietSecurity/abom`) | Actions bill of materials | Recursively resolves all actions including nested composites and reusable workflows. `--check` flags known-compromised actions from `abom-advisories` database. | Inventory only — no vulnerability pattern detection. |
+| **plumber** (`getplumber/plumber`) | CI/CD pipeline security scanner | Rego policy engine for GHA + GitLab CI. Configurable controls via `.plumber.yaml`. Many output formats (SARIF, CycloneDX, PBOM, OCSF). Score badges. Official GHA Action and GitLab CI Component. | Two platforms only (GitHub + GitLab). Rego-based rules, not pattern data. No cross-step chain detection. No Azure/Jenkins/CircleCI/Bitbucket. |
 | **StepSecurity Harden-Runner** | Runtime EDR for GHA runners | Monitors network egress, file integrity, process activity. Detects anomalous outbound calls. Caught tj-actions and Trivy compromises in real time. | Runtime only — can't prevent, only detect. Requires per-workflow integration. |
 
 ### Where actionsieve fits
@@ -63,6 +64,8 @@ actionsieve is **not** a replacement for any of these. It complements them:
   risk scoring and advisory checks
 - **Gato-X** finds candidates at scale → actionsieve provides deeper local
   analysis with custom patterns
+- **plumber** covers GitHub + GitLab with Rego policies → actionsieve adds
+  chain detection, more platforms, and YAML-data patterns instead of Rego
 - **Harden-Runner** detects at runtime → actionsieve prevents at review time
 
 The unique value:
