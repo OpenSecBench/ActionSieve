@@ -1,0 +1,27 @@
+kind: pipeline
+type: docker
+name: build
+
+trigger:
+  event:
+    - push
+    - pull_request
+
+steps:
+  - name: test
+    image: node:20
+    commands:
+      - echo "Building branch $DRONE_BRANCH"
+      - echo "${DRONE_COMMIT_MESSAGE}"
+      - npm test
+
+  - name: deploy
+    image: plugins/docker
+    settings:
+      repo: myorg/myapp
+      tags: latest
+
+  - name: notify
+    image: myorg/slack-notifier:latest
+    settings:
+      channel: deploys

@@ -18,6 +18,7 @@ PLATFORMS = [
     "circleci",
     "bitbucket",
     "buildkite",
+    "drone",
 ]
 FAIL_LEVELS = ["info", "low", "medium", "high", "critical"]
 

@@ -1,0 +1,20 @@
+kind: pipeline
+type: docker
+name: build
+
+trigger:
+  event:
+    - push
+
+steps:
+  - name: test
+    image: node:20
+    commands:
+      - npm ci
+      - npm test
+
+  - name: publish
+    image: plugins/docker:20.17.0
+    settings:
+      repo: myorg/myapp
+      tags: latest

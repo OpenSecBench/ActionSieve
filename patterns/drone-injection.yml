@@ -1,0 +1,42 @@
+patterns:
+
+  - id: drone-env-injection
+    title: Tainted environment variable in command step
+    description: |
+      A Drone CI command step interpolates an attacker-controlled
+      environment variable ($DRONE_BRANCH, $DRONE_COMMIT_MESSAGE)
+      directly into a shell command. Fork PR authors control branch
+      names and commit messages; shell metacharacters in the value
+      produce command injection.
+    platforms: [drone]
+    trigger: [push, pull_request]
+    trust_boundary: untrusted_user_input -> shell_execution
+    attacker_model: fork_pr
+    impact: [rce]
+    severity_base: high
+    requires_self_hosted: false
+    severity_notes: |
+      Drone pipelines often run on self-hosted runners. Commit
+      messages and branch names are always attacker-controlled in
+      fork PRs. Pull request titles are also controllable.
+    detection:
+      type: single_step
+      in_block: run
+      grep_patterns:
+        - '$DRONE_BRANCH'
+        - '${DRONE_BRANCH}'
+        - '$DRONE_COMMIT_MESSAGE'
+        - '${DRONE_COMMIT_MESSAGE}'
+        - '$DRONE_TAG'
+        - '${DRONE_TAG}'
+        - '$DRONE_PULL_REQUEST_TITLE'
+        - '${DRONE_PULL_REQUEST_TITLE}'
+        - '$DRONE_SOURCE_BRANCH'
+        - '${DRONE_SOURCE_BRANCH}'
+    mitigations:
+      - Quote variables in shell commands
+      - Use environment variable indirection
+      - Restrict fork PR builds to require approval
+    cwe: CWE-78
+    tags: [injection, drone, environment-variable]
+    status: active
