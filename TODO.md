@@ -259,14 +259,14 @@ Full spec + design decisions: `../actionsieve-corpus/bugs/diff-aware-scanning.md
 - [x] Unit tests with mocked env vars for each platform
 
 ### Step 4: CLI flags
-- [ ] `--changed-files` option in `cli.py`
-- [ ] `--trigger` option in `cli.py`
-- [ ] `--actor` option in `cli.py`
-- [ ] `--context` option in `cli.py` (path to YAML context file)
-- [ ] `--mode` option (`static` | `pr`) — force override, default auto
-- [ ] Wire flags into `scanner.scan()` via `ScanContext`
-- [ ] Conflict handling: `--changed-since` ignored with warning in PR mode
-- [ ] E2E tests for new flags
+- [x] `--changed-files` option in `cli.py`
+- [x] `--trigger` option in `cli.py`
+- [x] `--actor` option in `cli.py`
+- [x] `--context` option in `cli.py` (path to YAML context file)
+- [x] `--mode` option (`static` | `pr`) — force override, default auto
+- [x] Wire flags into `scanner.scan()` via `ScanContext`
+- [x] Conflict handling: `--changed-since` ignored with warning in PR mode
+- [x] E2E tests for new flags
 
 ### Step 5: Scanner/engine integration
 - [ ] `scanner.scan()` accepts `ScanContext`

@@ -27,6 +27,7 @@ from actionsieve.severity import (
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from actionsieve.context import ScanContext
     from actionsieve.model import WorkflowModel
 
 EXIT_CLEAN = 0
@@ -55,6 +56,7 @@ def scan(
     fail_on: str | None = None,
     show_suppressed: bool = False,
     changed_since: str | None = None,
+    scan_context: ScanContext | None = None,
     offline: bool = False,
     online: bool = False,
     token: str | None = None,

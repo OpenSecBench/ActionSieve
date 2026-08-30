@@ -24,6 +24,11 @@ class TestCLI:
         assert "--platform" in result.output
         assert "--format" in result.output
         assert "--changed-since" in result.output
+        assert "--changed-files" in result.output
+        assert "--trigger" in result.output
+        assert "--actor" in result.output
+        assert "--context" in result.output
+        assert "--mode" in result.output
         assert "--profile" in result.output
         assert "--fail-on" in result.output
 

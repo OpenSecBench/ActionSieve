@@ -86,6 +86,37 @@ def main() -> None:
     help="Only scan pipeline files changed since this git ref.",
 )
 @click.option(
+    "--changed-files",
+    type=str,
+    default=None,
+    help="Files changed in this PR (comma-separated, file path, or - for stdin).",
+)
+@click.option(
+    "--trigger",
+    type=str,
+    default=None,
+    help="CI trigger event (platform-native name, e.g. pull_request).",
+)
+@click.option(
+    "--actor",
+    type=str,
+    default=None,
+    help="Who triggered the event (fork, collaborator, maintainer).",
+)
+@click.option(
+    "--context",
+    "context_file",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="YAML file with trigger, actor, and changed_files.",
+)
+@click.option(
+    "--mode",
+    type=click.Choice(["static", "pr"]),
+    default=None,
+    help="Force scanning mode (default: auto-detect).",
+)
+@click.option(
     "--offline",
     is_flag=True,
     default=False,
@@ -113,6 +144,11 @@ def scan(
     fail_on: str | None,
     show_suppressed: bool,
     changed_since: str | None,
+    changed_files: str | None,
+    trigger: str | None,
+    actor: str | None,
+    context_file: Path | None,
+    mode: str | None,
     offline: bool,
     online: bool,
     token: str | None,
@@ -121,8 +157,24 @@ def scan(
     if online and offline:
         raise click.UsageError("--online and --offline are mutually exclusive.")
 
+    from actionsieve.context import ContextError, resolve_context
     from actionsieve.scanner import ChangedSinceError
     from actionsieve.scanner import scan as run_scan
+
+    try:
+        scan_context = resolve_context(
+            changed_files_raw=changed_files,
+            trigger=trigger,
+            actor=actor,
+            context_file=context_file,
+            mode=mode,
+        )
+    except ContextError as e:
+        raise click.ClickException(str(e)) from None
+
+    if scan_context and changed_since:
+        click.echo("Warning: --changed-since is ignored in PR mode.", err=True)
+        changed_since = None
 
     try:
         result = run_scan(
@@ -136,6 +188,7 @@ def scan(
             fail_on=fail_on,
             show_suppressed=show_suppressed,
             changed_since=changed_since,
+            scan_context=scan_context,
             offline=offline,
             online=online,
             token=token,
