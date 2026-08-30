@@ -108,7 +108,7 @@
 - [x] `inventory.py` — parse all `uses:` refs from WorkflowModel
 - [x] `inventory.py` — classify ref type (sha, tag, branch)
 - [x] `inventory.py` — detect first-party (actions/*, github/*)
-- [ ] `inventory.py` — recursive composite action resolution
+- [x] `inventory.py` — recursive composite action resolution
 - [x] `advisories.py` — load advisory database (abom-advisories YAML format)
 - [x] `advisories.py` — match components against advisories
 - [x] `trust.py` — trust score computation (ref type, owner, advisory, popularity)
@@ -160,7 +160,7 @@
 - [x] Jenkins-specific patterns (parameter injection, change variable injection)
 - [x] Scripted pipeline support (node {}, script {} blocks, sh named args)
 - [x] `output.py` — Markdown report generation (Jinja2 template)
-- [ ] CI wrapper distribution (GitHub Action YAML, GitLab template, Azure task)
+- [x] CI wrapper distribution (GitHub Action YAML, GitLab template, Azure task)
 - [ ] Pattern catalog versioning and update mechanism
 - [ ] Interactive TUI for triaging search results (textual or rich)
 

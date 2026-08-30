@@ -1,0 +1,47 @@
+actionsieve:
+  stage: test
+  image: python:3.12-slim
+  variables:
+    ACTIONSIEVE_PATH: "."
+    ACTIONSIEVE_FORMAT: json
+    ACTIONSIEVE_PLATFORM: ""
+    ACTIONSIEVE_PROFILE: ""
+    ACTIONSIEVE_PATTERNS: ""
+    ACTIONSIEVE_FAIL_ON: ""
+    ACTIONSIEVE_EXTRA_ARGS: ""
+  before_script:
+    - pip install --quiet actionsieve
+  script:
+    - |
+      args="scan --format $ACTIONSIEVE_FORMAT"
+
+      if [ -n "$ACTIONSIEVE_PLATFORM" ]; then
+        args="$args --platform $ACTIONSIEVE_PLATFORM"
+      fi
+      if [ -n "$ACTIONSIEVE_PROFILE" ]; then
+        args="$args --profile $ACTIONSIEVE_PROFILE"
+      fi
+      if [ -n "$ACTIONSIEVE_PATTERNS" ]; then
+        args="$args --patterns $ACTIONSIEVE_PATTERNS"
+      fi
+      if [ -n "$ACTIONSIEVE_FAIL_ON" ]; then
+        args="$args --fail-on $ACTIONSIEVE_FAIL_ON"
+      fi
+      if [ -n "$ACTIONSIEVE_EXTRA_ARGS" ]; then
+        args="$args $ACTIONSIEVE_EXTRA_ARGS"
+      fi
+
+      if [ "$ACTIONSIEVE_FORMAT" = "json" ]; then
+        args="$args --output actionsieve-results.json"
+      fi
+
+      actionsieve $args "$ACTIONSIEVE_PATH"
+  artifacts:
+    when: always
+    paths:
+      - actionsieve-results.json
+    reports:
+      codequality: actionsieve-results.json
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
