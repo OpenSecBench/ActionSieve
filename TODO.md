@@ -180,7 +180,7 @@
 - [x] Pipe references as ComponentRef (supply chain — unpinned pipe tags)
 - [x] Variable injection in `script:` steps
 - [x] Self-hosted runner detection (Bitbucket Runners)
-- [ ] Repository variable / deployment variable scoping
+- [x] Repository variable / deployment variable scoping
 - [x] Bitbucket fixtures (vulnerable + safe)
 - [x] Bitbucket-specific patterns (pipe trust, variable injection)
 - [x] Unit + E2E tests
