@@ -168,9 +168,9 @@
 ### CircleCI
 - [x] `providers/circleci.py` — detect `.circleci/config.yml`, parse to WorkflowModel
 - [x] Orb references as ComponentRef (supply chain vector — unpinned orbs, volatile tags)
-- [ ] Context-based secret scoping analysis
+- [x] Context-based secret scoping analysis
 - [x] Expression injection in `run:` steps (environment variable interpolation)
-- [ ] `config.yml` processing/dynamic config (`setup: true`, continuation orb)
+- [x] `config.yml` processing/dynamic config (`setup: true`, continuation orb)
 - [x] CircleCI fixtures (vulnerable + safe)
 - [x] CircleCI-specific patterns (orb trust, context leaks, self-hosted runner)
 - [x] Unit + E2E tests
