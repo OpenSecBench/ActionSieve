@@ -191,10 +191,12 @@ def _parse_job(
     ]
 
     env = _parse_env(data)
+    image = _extract_image(data, executors)
 
     return Job(
         id=name,
         runner=runner,
+        image=image,
         steps=steps + orb_steps,
         env=env,
     )
@@ -222,6 +224,31 @@ def _resolve_runner(data: dict[str, Any], executors: dict[str, str]) -> str:
 def _parse_env(data: dict[str, Any]) -> dict[str, str]:
     env = data.get("environment", {})
     return {str(k): str(v) for k, v in env.items()} if isinstance(env, dict) else {}
+
+
+def _extract_image(data: dict[str, Any], executors: dict[str, str] | None = None) -> str | None:
+    docker = data.get("docker")
+    if isinstance(docker, list) and docker:
+        first = docker[0]
+        if isinstance(first, dict):
+            img = first.get("image")
+            if isinstance(img, str):
+                return img
+    machine = data.get("machine")
+    if isinstance(machine, dict):
+        img = machine.get("image")
+        if isinstance(img, str):
+            return img
+    if executors:
+        executor_ref = data.get("executor")
+        name = executor_ref if isinstance(executor_ref, str) else None
+        if isinstance(executor_ref, dict):
+            name = executor_ref.get("name")
+        if name and name in executors:
+            resolved = executors[name]
+            if resolved not in ("docker", "machine", "macos"):
+                return resolved
+    return None
 
 
 def _parse_triggers(raw: dict[str, Any]) -> list[Trigger]:

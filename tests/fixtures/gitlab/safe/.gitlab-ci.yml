@@ -8,7 +8,7 @@ workflow:
 
 build:
   stage: build
-  image: node:18
+  image: node@sha256:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
   script:
     - echo "Building project"
     - npm install
@@ -20,7 +20,7 @@ build:
 test:
   stage: test
   needs: [build]
-  image: node:18
+  image: node@sha256:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
   script:
     - echo "Running tests"
     - npm test

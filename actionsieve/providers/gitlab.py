@@ -217,8 +217,15 @@ def _parse_job(
     default: dict[str, Any],
     lines: list[str],
 ) -> Job:
-    image = data.get("image") or default.get("image")
-    runner_raw = str(image) if image else "default"
+    image_raw = data.get("image") or default.get("image")
+    runner_raw = str(image_raw) if image_raw else "default"
+    image_str: str | None = None
+    if isinstance(image_raw, str):
+        image_str = image_raw
+    elif isinstance(image_raw, dict):
+        img = image_raw.get("name")
+        if isinstance(img, str):
+            image_str = img
 
     tags = data.get("tags", [])
     is_self_hosted = bool(tags)
@@ -252,6 +259,7 @@ def _parse_job(
         runner=runner,
         name=data.get("name"),
         permissions=None,
+        image=image_str,
         env=env,
         needs=needs,
         outputs={},

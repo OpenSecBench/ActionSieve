@@ -71,6 +71,10 @@ class JenkinsProvider:
         triggers = _extract_triggers(text)
         runner = _to_runner(info.agent)
 
+        image: str | None = None
+        if info.agent and info.agent.kind == "docker":
+            image = info.agent.label
+
         jobs: list[Job] = []
         if info.stages:
             for stage in info.stages:
@@ -83,6 +87,7 @@ class JenkinsProvider:
                         id=stage.name,
                         runner=runner,
                         name=stage.name,
+                        image=image,
                         steps=lib_steps + steps,
                         secrets_referenced=secrets,
                     )
@@ -95,6 +100,7 @@ class JenkinsProvider:
                 Job(
                     id="pipeline",
                     runner=runner,
+                    image=image,
                     steps=lib_steps + steps,
                     secrets_referenced=secrets,
                 )

@@ -30,6 +30,7 @@ def match_structural(
         "circleci-dynamic-config": _match_circleci_dynamic_config,
         "missing-permissions-block": _match_missing_permissions,
         "checkout-persists-credentials": _match_checkout_persists_creds,
+        "unpinned-container-image": _match_unpinned_image,
     }
 
     matcher = dispatch.get(pid)
@@ -381,3 +382,20 @@ def _describe_checks(
             reachable = any(t.is_fork_reachable for t in model.triggers)
             evidence.append(f"Fork reachable: {reachable}")
     return evidence
+
+
+def _match_unpinned_image(
+    model: WorkflowModel, pattern: dict[str, Any], make_finding: MakeFinding
+) -> list[Finding]:
+    return [
+        make_finding(
+            pattern=pattern,
+            model=model,
+            job=job,
+            step=None,
+            evidence=[f"Unpinned container image: {job.image}"],
+            line=0,
+        )
+        for job in model.jobs
+        if job.image and "@sha256:" not in job.image
+    ]

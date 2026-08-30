@@ -246,6 +246,30 @@ class TestPipeToShellFindings:
         assert len(pipe_findings) == 0
 
 
+class TestContainerImageFindings:
+    def test_unpinned_container_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "unpinned-container-image" in ids
+
+    def test_pinned_container_not_flagged(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "safe")],
+        )
+        data = json.loads(result.output)
+        img_findings = [
+            f for f in data["findings"] if f["pattern_id"] == "unpinned-container-image"
+        ]
+        assert len(img_findings) == 0
+
+
 class TestTrustRepoProfile:
     def _make_repo(self, tmp_path: Path) -> Path:
         wf_dir = tmp_path / ".github" / "workflows"

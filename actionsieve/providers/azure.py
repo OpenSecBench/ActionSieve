@@ -259,11 +259,21 @@ def _parse_job(
     if condition:
         conditions.append(str(condition))
 
+    container = data.get("container")
+    image: str | None = None
+    if isinstance(container, str):
+        image = container
+    elif isinstance(container, dict):
+        img = container.get("image")
+        if isinstance(img, str):
+            image = img
+
     return Job(
         id=job_id,
         runner=make_runner(runner_raw),
         name=data.get("displayName"),
         permissions=None,
+        image=image,
         env=env,
         needs=needs,
         outputs={},

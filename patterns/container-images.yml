@@ -1,0 +1,31 @@
+patterns:
+
+  - id: unpinned-container-image
+    title: Container image not pinned by digest
+    description: |
+      A CI job runs inside a container image referenced by tag
+      (e.g. node:20) rather than digest (node@sha256:...).
+      Tags are mutable — the image owner or a registry compromise
+      can change what a tag points to between builds, injecting
+      code into your pipeline without any visible change in config.
+    platforms: "all"
+    trigger: [any]
+    trust_boundary: container_registry -> build_environment
+    attacker_model: any
+    impact: [rce, supply_chain]
+    severity_base: low
+    requires_self_hosted: false
+    severity_notes: |
+      Most CI images come from trusted registries (Docker Hub official,
+      GitHub Container Registry). Risk increases with third-party or
+      self-hosted registries. Severity is low because exploitation
+      requires registry compromise or a malicious image maintainer.
+    detection:
+      type: structural
+    mitigations:
+      - Pin images by digest (image@sha256:...)
+      - Use a private registry mirror with admission controls
+      - Scan container images before use in CI
+    cwe: CWE-829
+    tags: [supply-chain, container, image-pinning]
+    status: active

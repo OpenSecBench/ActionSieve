@@ -213,11 +213,21 @@ def _parse_job(job_id: str, data: Any, lines: list[str]) -> Job:
     if "if" in data:
         conditions.append(str(data["if"]))
 
+    container = data.get("container")
+    image: str | None = None
+    if isinstance(container, str):
+        image = container
+    elif isinstance(container, dict):
+        img = container.get("image")
+        if isinstance(img, str):
+            image = img
+
     return Job(
         id=str(job_id),
         runner=make_runner(runner_raw),
         name=data.get("name"),
         permissions=_parse_permissions(data.get("permissions")),
+        image=image,
         env=str_dict(data.get("env", {})),
         needs=needs,
         outputs=outputs,

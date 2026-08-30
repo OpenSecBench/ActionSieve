@@ -71,9 +71,11 @@ class BitbucketProvider:
         jobs: list[Job] = []
         triggers: list[Trigger] = []
 
+        default_image = _extract_default_image(raw)
+
         for section, trigger in _iter_pipeline_sections(pipelines):
             triggers.append(trigger)
-            section_jobs = _parse_section(section, trigger.event, lines)
+            section_jobs = _parse_section(section, trigger.event, lines, default_image)
             jobs.extend(section_jobs)
 
         if not triggers:
@@ -202,7 +204,16 @@ def _iter_pipeline_sections(
     return results
 
 
-def _parse_section(items: list[Any], event: str, lines: list[str]) -> list[Job]:
+def _extract_default_image(raw: dict[str, Any]) -> str | None:
+    img = raw.get("image")
+    if isinstance(img, str):
+        return img
+    return str(img["name"]) if isinstance(img, dict) and isinstance(img.get("name"), str) else None
+
+
+def _parse_section(
+    items: list[Any], event: str, lines: list[str], default_image: str | None
+) -> list[Job]:
     jobs: list[Job] = []
     for i, item in enumerate(items):
         if not isinstance(item, dict):
@@ -210,7 +221,7 @@ def _parse_section(items: list[Any], event: str, lines: list[str]) -> list[Job]:
         if "step" in item:
             step_data = item["step"]
             if isinstance(step_data, dict):
-                job = _parse_step_as_job(f"{event}-step-{i}", step_data, lines)
+                job = _parse_step_as_job(f"{event}-step-{i}", step_data, lines, default_image)
                 jobs.append(job)
         elif "parallel" in item:
             parallel = item["parallel"]
@@ -223,12 +234,15 @@ def _parse_section(items: list[Any], event: str, lines: list[str]) -> list[Job]:
                                 f"{event}-parallel-{i}-{j}",
                                 step_data,
                                 lines,
+                                default_image,
                             )
                             jobs.append(job)
     return jobs
 
 
-def _parse_step_as_job(job_id: str, data: dict[str, Any], lines: list[str]) -> Job:
+def _parse_step_as_job(
+    job_id: str, data: dict[str, Any], lines: list[str], default_image: str | None = None
+) -> Job:
     name = data.get("name", job_id)
     runner = _parse_runner(data)
     steps = _parse_scripts(data, lines)
@@ -239,10 +253,22 @@ def _parse_step_as_job(job_id: str, data: dict[str, Any], lines: list[str]) -> J
     if isinstance(deployment, str):
         secrets.append(f"deployment:{deployment}")
 
+    image_raw = data.get("image")
+    image: str | None = None
+    if isinstance(image_raw, str):
+        image = image_raw
+    elif isinstance(image_raw, dict):
+        img = image_raw.get("name")
+        if isinstance(img, str):
+            image = img
+    if image is None:
+        image = default_image
+
     return Job(
         id=job_id,
         runner=runner,
         name=str(name),
+        image=image,
         steps=steps + pipe_steps,
         secrets_referenced=secrets,
     )

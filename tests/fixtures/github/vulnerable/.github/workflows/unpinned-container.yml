@@ -1,0 +1,10 @@
+name: Container build
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: node:20
+    steps:
+      - run: npm test

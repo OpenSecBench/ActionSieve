@@ -232,6 +232,25 @@ class TestPipeToShell:
         assert len(pipe_findings) == 0
 
 
+class TestUnpinnedContainerImage:
+    def test_detects_unpinned_tag(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/unpinned-container.yml")
+        img_findings = [f for f in findings if f.pattern_id == "unpinned-container-image"]
+        assert len(img_findings) == 1
+        assert img_findings[0].severity_base == "low"
+        assert "node:20" in img_findings[0].evidence[0]
+
+    def test_pinned_digest_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/pinned-container.yml")
+        img_findings = [f for f in findings if f.pattern_id == "unpinned-container-image"]
+        assert len(img_findings) == 0
+
+    def test_no_container_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/pinned-actions.yml")
+        img_findings = [f for f in findings if f.pattern_id == "unpinned-container-image"]
+        assert len(img_findings) == 0
+
+
 class TestNoFalsePositivesOnSafe:
     def test_env_indirection(self) -> None:
         findings = _scan("safe/.github/workflows/env-indirection.yml")

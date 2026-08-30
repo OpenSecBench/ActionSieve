@@ -81,6 +81,7 @@ class Job:
     runner: Runner
     name: str | None = None
     permissions: Permissions | None = None
+    image: str | None = None
     env: dict[str, str] = field(default_factory=dict)
     needs: list[str] = field(default_factory=list)
     outputs: dict[str, str] = field(default_factory=dict)
