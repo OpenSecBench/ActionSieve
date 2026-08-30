@@ -58,6 +58,13 @@ class TestSupplyChain:
         sc_findings = [f for f in findings if f.pattern_id == "mutable-action-ref"]
         assert len(sc_findings) == 0
 
+    def test_detects_unpinned_reusable_workflow(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/reusable-workflow-unpinned.yml")
+        sc_findings = [f for f in findings if f.pattern_id == "mutable-action-ref"]
+        assert len(sc_findings) >= 1
+        refs = [" ".join(f.evidence) for f in sc_findings]
+        assert any("shared-workflows" in r for r in refs)
+
 
 class TestSelfHosted:
     def test_detects_self_hosted(self) -> None:

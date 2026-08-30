@@ -202,6 +202,11 @@ def _parse_job(job_id: str, data: Any, lines: list[str]) -> Job:
     steps_raw = data.get("steps", [])
     steps = [_parse_step(i, s, lines) for i, s in enumerate(steps_raw) if isinstance(s, dict)]
 
+    job_uses = data.get("uses")
+    if isinstance(job_uses, str) and job_uses:
+        ref = parse_uses(job_uses, lines)
+        steps.append(Step(index=0, type="action", name=job_uses, action_ref=ref))
+
     secrets_referenced = find_secrets(data)
 
     conditions: list[str] = []

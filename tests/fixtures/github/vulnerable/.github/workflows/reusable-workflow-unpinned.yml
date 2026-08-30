@@ -1,0 +1,9 @@
+name: CI
+on: push
+
+jobs:
+  build:
+    uses: org/shared-workflows/.github/workflows/build.yml@main
+  deploy:
+    needs: build
+    uses: org/shared-workflows/.github/workflows/deploy.yml@v1
