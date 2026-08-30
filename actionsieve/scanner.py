@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 import re
 import subprocess
 from dataclasses import dataclass
@@ -120,11 +121,17 @@ def scan(
     if online:
         all_findings.extend(_run_pin_checks(models, token))
 
+    pattern_index = _build_pattern_index(patterns_path, providers)
+
     visible: list[Finding] = []
     suppressed: list[Finding] = []
 
     for finding in all_findings:
         if is_suppressed(finding, profile):
+            finding.suppressed_by = "profile"
+            suppressed.append(finding)
+        elif scan_context and _changeset_suppressed(finding, pattern_index, scan_context):
+            finding.suppressed_by = "changeset"
             suppressed.append(finding)
         else:
             visible.append(finding)
@@ -132,6 +139,8 @@ def scan(
     for finding in visible:
         computed = apply_profile(finding.severity_base, profile)
         if is_elevated(finding, profile):
+            computed = elevate_severity(computed)
+        if scan_context and _changeset_elevated(finding, pattern_index, scan_context):
             computed = elevate_severity(computed)
         finding.severity_computed = computed
 
@@ -151,6 +160,51 @@ def scan(
         exit_code=exit_code,
         output_text=output_text,
     )
+
+
+def _build_pattern_index(
+    patterns_path: Path | None,
+    providers: list[Any],
+) -> dict[str, dict[str, Any]]:
+    index: dict[str, dict[str, Any]] = {}
+    for provider in providers:
+        for p in load_patterns(patterns_path, platform=provider.name):
+            index[p["id"]] = p
+    return index
+
+
+def _changeset_suppressed(
+    finding: Finding,
+    pattern_index: dict[str, dict[str, Any]],
+    ctx: ScanContext,
+) -> bool:
+    pattern = pattern_index.get(finding.pattern_id)
+    if not pattern:
+        return False
+    if pattern.get("diff_scope") != "changeset":
+        return False
+    if pattern.get("diff_effect") != "suppress":
+        return False
+    return not _matches_reachable_files(pattern.get("reachable_files", []), ctx.changed_files)
+
+
+def _changeset_elevated(
+    finding: Finding,
+    pattern_index: dict[str, dict[str, Any]],
+    ctx: ScanContext,
+) -> bool:
+    pattern = pattern_index.get(finding.pattern_id)
+    if not pattern:
+        return False
+    if pattern.get("diff_scope") != "changeset":
+        return False
+    if pattern.get("diff_effect") != "elevate":
+        return False
+    return _matches_reachable_files(pattern.get("reachable_files", []), ctx.changed_files)
+
+
+def _matches_reachable_files(globs: list[str], changed_files: list[str]) -> bool:
+    return any(fnmatch.fnmatch(f, g) for f in changed_files for g in globs)
 
 
 class ChangedSinceError(Exception):

@@ -28,6 +28,7 @@ class Finding:
     attacker_model: str
     impact: str | list[str]
     severity_computed: str | None = None
+    suppressed_by: str | None = None
     evidence: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
     cwe: str | None = None

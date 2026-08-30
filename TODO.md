@@ -269,16 +269,16 @@ Full spec + design decisions: `../actionsieve-corpus/bugs/diff-aware-scanning.md
 - [x] E2E tests for new flags
 
 ### Step 5: Scanner/engine integration
-- [ ] `scanner.scan()` accepts `ScanContext`
-- [ ] In PR mode, scan all pipeline files (ignore `--changed-since`)
-- [ ] After matching, apply changeset suppression: `diff_scope: changeset` + `diff_effect: suppress` + no reachable file in changeset → suppress with `suppressed_by: changeset`
-- [ ] After matching, apply changeset elevation: `diff_scope: changeset` + `diff_effect: elevate` + reachable file in changeset → bump severity one level
-- [ ] Glob matching for `reachable_files` against changed-files list (repo-root-relative)
-- [ ] `--show-suppressed` includes changeset-suppressed findings
-- [ ] Exit code based on unsuppressed findings only (consistent with profile suppression)
+- [x] `scanner.scan()` accepts `ScanContext`
+- [x] In PR mode, scan all pipeline files (ignore `--changed-since`)
+- [x] After matching, apply changeset suppression: `diff_scope: changeset` + `diff_effect: suppress` + no reachable file in changeset → suppress with `suppressed_by: changeset`
+- [x] After matching, apply changeset elevation: `diff_scope: changeset` + `diff_effect: elevate` + reachable file in changeset → bump severity one level
+- [x] Glob matching for `reachable_files` against changed-files list (repo-root-relative)
+- [x] `--show-suppressed` includes changeset-suppressed findings
+- [x] Exit code based on unsuppressed findings only (consistent with profile suppression)
 - [ ] Coverage note in output when pipeline file count seems low
-- [ ] Unit tests: suppress path, elevate path, always-fire path
-- [ ] Unit tests: exit code with mixed suppressed/unsuppressed findings
+- [x] Unit tests: suppress path, elevate path, always-fire path
+- [x] Unit tests: exit code with mixed suppressed/unsuppressed findings
 
 ### Step 6: Annotate pattern catalog
 - [ ] Review every pattern, assign `diff_scope` (`always` or `changeset`)
