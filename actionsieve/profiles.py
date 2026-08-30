@@ -45,7 +45,7 @@ class ProfileError(Exception):
 
 def load_profile(
     profile_arg: str | None = None,
-    repo_path: Path | None = None,
+    repo_profile: Path | None = None,
 ) -> dict[str, Any]:
     if profile_arg:
         if profile_arg in BUILTIN_PROFILES:
@@ -56,10 +56,8 @@ def load_profile(
         msg = f"Profile not found: {profile_arg} (not a preset or file)"
         raise ProfileError(msg)
 
-    if repo_path:
-        repo_profile = repo_path / ".actionsieve.yml"
-        if repo_profile.is_file():
-            return _load_from_file(repo_profile)
+    if repo_profile and repo_profile.is_file():
+        return _load_from_file(repo_profile)
 
     user_profile = Path.home() / ".config" / "actionsieve" / "profile.yml"
     if user_profile.is_file():

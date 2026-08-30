@@ -46,6 +46,7 @@ def scan(
     output_file: Path | None = None,
     patterns_path: Path | None = None,
     profile_name: str | None = None,
+    trust_repo_profile: bool = False,
     fail_on: str | None = None,
     show_suppressed: bool = False,
     diff_base: str | None = None,
@@ -61,7 +62,8 @@ def scan(
             output_text=render([], output_format, output_file),
         )
 
-    profile = load_profile(profile_name, repo_path)
+    repo_profile = (repo_path / ".actionsieve.yml") if trust_repo_profile else None
+    profile = load_profile(profile_name, repo_profile=repo_profile)
 
     all_findings: list[Finding] = []
 

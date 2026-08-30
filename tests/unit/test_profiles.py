@@ -113,13 +113,19 @@ class TestSchemaValidation:
         assert profile["runners"]["type"] == "ephemeral"
 
 
-class TestAutoDiscovery:
-    def test_repo_profile(self, tmp_path: Path) -> None:
-        repo_profile = tmp_path / ".actionsieve.yml"
-        repo_profile.write_text("profile:\n  forks:\n    policy: disabled\n")
-        profile = load_profile(repo_path=tmp_path)
+class TestRepoProfile:
+    def test_repo_profile_loaded_when_explicit(self, tmp_path: Path) -> None:
+        dotfile = tmp_path / ".actionsieve.yml"
+        dotfile.write_text("profile:\n  forks:\n    policy: disabled\n")
+        profile = load_profile(repo_profile=dotfile)
         assert profile["forks"]["policy"] == "disabled"
 
-    def test_defaults_when_no_file(self, tmp_path: Path) -> None:
-        profile = load_profile(repo_path=tmp_path)
+    def test_repo_profile_ignored_by_default(self, tmp_path: Path) -> None:
+        dotfile = tmp_path / ".actionsieve.yml"
+        dotfile.write_text("profile:\n  suppress: [expression-injection]\n")
+        profile = load_profile()
+        assert "suppress" not in profile
+
+    def test_defaults_when_no_file(self) -> None:
+        profile = load_profile()
         assert profile == {}

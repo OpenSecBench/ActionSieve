@@ -184,6 +184,9 @@ This tool scans for CI/CD vulnerabilities — it must not introduce any.
 - No importing or executing code from scanned repos.
 - File size caps on parsed files (1MB per workflow).
 - Recursion depth limits for composite resolution.
+- Never load config from the scanned repo by default — a malicious repo
+  could suppress findings via `.actionsieve.yml`. Repo profiles require
+  explicit `--trust-repo-profile`.
 - Reference CI workflows use `pull_request` (not `pull_request_target`),
   load patterns from base branch, pin all action refs to SHA.
 

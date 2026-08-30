@@ -49,6 +49,12 @@ def main() -> None:
     help="Environment profile (path or preset name).",
 )
 @click.option(
+    "--trust-repo-profile",
+    is_flag=True,
+    default=False,
+    help="Load .actionsieve.yml from the scanned repo (off by default).",
+)
+@click.option(
     "--fail-on",
     type=click.Choice(FAIL_LEVELS),
     default=None,
@@ -80,6 +86,7 @@ def scan(
     output_file: Path | None,
     patterns: Path | None,
     profile: str | None,
+    trust_repo_profile: bool,
     fail_on: str | None,
     show_suppressed: bool,
     diff_base: str | None,
@@ -95,6 +102,7 @@ def scan(
         output_file=output_file,
         patterns_path=patterns,
         profile_name=profile,
+        trust_repo_profile=trust_repo_profile,
         fail_on=fail_on,
         show_suppressed=show_suppressed,
         diff_base=diff_base,
