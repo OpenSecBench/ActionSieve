@@ -14,6 +14,13 @@ patterns:
     impact: [rce]
     severity_base: high
     requires_self_hosted: false
+    diff_scope: changeset
+    diff_effect: elevate
+    reachable_files:
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
+      - ".github/actions/*/action.yml"
+      - ".github/actions/*/action.yaml"
     severity_notes: |
       On ephemeral runners with fork PR trigger: RCE with read-only
       GITHUB_TOKEN, no repo secrets. Low real impact unless combined
@@ -66,6 +73,13 @@ patterns:
     impact: [rce]
     severity_base: high
     requires_self_hosted: false
+    diff_scope: changeset
+    diff_effect: elevate
+    reachable_files:
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
+      - ".github/actions/*/action.yml"
+      - ".github/actions/*/action.yaml"
     severity_notes: |
       Same as expr-injection-run but in Node.js with octokit. If the job
       has pull-requests: write or issues: write, the attacker can act as
@@ -183,6 +197,13 @@ patterns:
     impact: [rce]
     severity_base: high
     requires_self_hosted: false
+    diff_scope: changeset
+    diff_effect: elevate
+    reachable_files:
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
+      - ".github/actions/*/action.yml"
+      - ".github/actions/*/action.yaml"
     detection:
       type: cross_step
       grep_patterns:

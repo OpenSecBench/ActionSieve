@@ -15,6 +15,22 @@ patterns:
     impact: [supply_chain, rce, secret_exfil]
     severity_base: medium
     requires_self_hosted: false
+    diff_scope: changeset
+    diff_effect: elevate
+    reachable_files:
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
+      - ".github/actions/*/action.yml"
+      - ".github/actions/*/action.yaml"
+      - ".gitlab-ci.yml"
+      - ".gitlab/ci/*.yml"
+      - "azure-pipelines.yml"
+      - ".azure-pipelines/*.yml"
+      - ".circleci/config.yml"
+      - "bitbucket-pipelines.yml"
+      - ".buildkite/pipeline.yml"
+      - ".drone.yml"
+      - "Jenkinsfile"
     severity_notes: |
       Supply chain risk, not a direct vulnerability. Target repo is only
       vulnerable if upstream is compromised. Blast radius can be enormous.

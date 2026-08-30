@@ -15,6 +15,12 @@ patterns:
     impact: [rce]
     severity_base: medium
     requires_self_hosted: false
+    diff_scope: changeset
+    diff_effect: suppress
+    reachable_files:
+      - "Dockerfile*"
+      - "*.dockerfile"
+      - "docker-compose*"
     severity_notes: |
       On managed ephemeral runners (GitHub ubuntu-latest), Docker
       is available but the VM is isolated and discarded. Risk is

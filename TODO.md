@@ -281,10 +281,10 @@ Full spec + design decisions: `../actionsieve-corpus/bugs/diff-aware-scanning.md
 - [x] Unit tests: exit code with mixed suppressed/unsuppressed findings
 
 ### Step 6: Annotate pattern catalog
-- [ ] Review every pattern, assign `diff_scope` (`always` or `changeset`)
-- [ ] For `changeset` patterns: add `diff_effect` and `reachable_files` with narrow globs
-- [ ] Validate all patterns still load and pass schema
-- [ ] Test annotated patterns against existing fixtures (no regressions)
+- [x] Review every pattern, assign `diff_scope` (`always` or `changeset`)
+- [x] For `changeset` patterns: add `diff_effect` and `reachable_files` with narrow globs
+- [x] Validate all patterns still load and pass schema
+- [x] Test annotated patterns against existing fixtures (no regressions)
 
 ## Ongoing
 
