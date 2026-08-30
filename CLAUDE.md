@@ -60,6 +60,8 @@ actionsieve/
   inventory.py    — component bill of materials
   advisories.py   — advisory database loader + checker
   trust.py        — component trust scoring
+  api_client.py   — shared HTTP, rate limiting, disk cache for forge APIs
+  pins.py         — SHA pin verification (online, GitHub Tags/Commits API)
   output.py       — result formatting (JSON, YAML, Markdown, SARIF, CycloneDX)
   search.py       — forge-wide code search
   providers/

@@ -212,7 +212,7 @@
 - [x] Reusable workflow ref pinning — extend `mutable-action-ref` to job-level `uses:` for reusable workflow refs
 - [x] Missing `permissions:` block — flag GitHub workflows without top-level or job-level `permissions:` (`patterns/hardening.yml`)
 - [x] Checkout `persist-credentials` — flag `actions/checkout` without `persist-credentials: false` (`patterns/hardening.yml`)
-- [ ] SHA pin verification — verify pinned SHA belongs to the referenced repo, trailing comment matches the tag, pin is not outdated. Requires GitHub API (`--online` mode or `inventory --check`). Severity `info` (stale) to `medium` (wrong-repo SHA).
+- [x] SHA pin verification — verify pinned SHA belongs to the referenced repo, pin is not outdated. `--online` mode in scan and inventory. `api_client.py` for shared HTTP/caching, `pins.py` for verification logic. Offline `truncated-sha-pin` pattern for short SHA refs. Severity `info` (outdated/untagged) to `medium` (wrong-repo SHA). TODO: stale trailing comment detection, GitLab/Azure forge support.
 - [x] Advisory matching during scan — `action-version-advisory` pattern checks refs against bundled advisory database during scan
 
 ## Backlog — ideas from plumber
