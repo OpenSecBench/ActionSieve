@@ -23,6 +23,7 @@ patterns:
         - '$(Build.RequestedFor)'
         - '$(Build.RequestedForEmail)'
         - '$(System.PullRequest.SourceBranch)'
+        - '$(System.PullRequest.TargetBranch)'
     cwe: CWE-78
     tags: [injection, azure]
     mitigations:

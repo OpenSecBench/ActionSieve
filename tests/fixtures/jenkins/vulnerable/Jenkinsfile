@@ -13,6 +13,7 @@ pipeline {
                 sh "echo Building branch ${env.BRANCH_NAME}"
                 sh "echo PR title: ${env.CHANGE_TITLE}"
                 sh "echo User input: ${params.DEPLOY_TARGET}"
+                sh "echo Tag: ${env.TAG_NAME}"
             }
         }
         stage('Deploy') {

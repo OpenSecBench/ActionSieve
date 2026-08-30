@@ -29,6 +29,8 @@ stages:
         steps:
           - script: echo "Testing $(Build.RequestedFor)"
             displayName: Test
+          - script: 'echo "Target: $(System.PullRequest.TargetBranch)"'
+            displayName: Check target
 
   - stage: Deploy
     jobs:

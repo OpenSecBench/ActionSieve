@@ -49,6 +49,7 @@ patterns:
         - '${env.CHANGE_FORK}'
         - '${env.CHANGE_TARGET}'
         - '${env.BRANCH_NAME}'
+        - '${env.TAG_NAME}'
     cwe: CWE-78
     tags: [injection, shell, jenkins]
     mitigations:
