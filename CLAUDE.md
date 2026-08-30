@@ -79,7 +79,7 @@ patterns/advisories/       — known-compromised component database
 tests/fixtures/{platform}/ — sample pipelines (vulnerable/ and safe/)
 ```
 
-Each module has a single responsibility. If a module grows past ~400 lines,
+Each module has a single responsibility. If a module grows past ~600 lines,
 it's probably doing too much — split it.
 
 ## Testing
@@ -207,7 +207,7 @@ enforce quality at each commit.
   new pattern has vulnerable + safe fixtures
 - [ ] **Types are strict** — no `Any` where a concrete type works, no
   `object` + `assert isinstance` workarounds, use `TYPE_CHECKING` imports
-- [ ] **Line counts** — no module over 400 lines (split before committing,
+- [ ] **Line counts** — no module over 600 lines (split before committing,
   not after)
 - [ ] **No dead code** — no unused imports, variables, functions, or
   constants
