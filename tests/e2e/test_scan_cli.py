@@ -43,6 +43,26 @@ class TestScanCommand:
         assert data["version"] == "2.1.0"
         assert len(data["runs"][0]["results"]) > 0
 
+    def test_scan_markdown_format(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main, ["scan", "--format", "markdown", str(FIXTURES / "vulnerable")]
+        )
+        assert result.exit_code != 0
+        assert "# actionsieve Security Report" in result.output
+        assert "expr-injection-run" in result.output
+
+    def test_scan_markdown_output_file(self, tmp_path: Path) -> None:
+        out = tmp_path / "report.md"
+        runner = CliRunner()
+        runner.invoke(
+            main,
+            ["scan", "--format", "markdown", "--output", str(out), str(FIXTURES / "vulnerable")],
+        )
+        assert out.exists()
+        text = out.read_text()
+        assert "# actionsieve Security Report" in text
+
     def test_scan_platform_github(self) -> None:
         runner = CliRunner()
         result = runner.invoke(

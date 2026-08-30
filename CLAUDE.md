@@ -247,6 +247,6 @@ htmlcov/
 
 ## Current phase
 
-Phases 1–4 complete (GitHub Actions scanner, component inventory, chain
-detection, GitLab CI + Azure Pipelines). See `docs/architecture.md` for the full 6-phase implementation
-plan and `TODO.md` for the task breakdown.
+Phases 1–4 complete. Phase 6 in progress — Jenkins provider done,
+Markdown report output next. See `docs/architecture.md` for the full
+6-phase plan and `TODO.md` for the task breakdown.

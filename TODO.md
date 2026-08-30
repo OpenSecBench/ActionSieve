@@ -153,10 +153,10 @@
 
 ## Phase 6: Jenkins + reporting + polish
 
-- [ ] `providers/jenkins.py` — declarative pipeline parser (regex-based)
-- [ ] Jenkins fixtures (vulnerable + safe)
-- [ ] Jenkins-specific patterns (shared library injection, sandbox escape)
-- [ ] `output.py` — Markdown report generation
+- [x] `providers/jenkins.py` — declarative pipeline parser (regex-based)
+- [x] Jenkins fixtures (vulnerable + safe)
+- [x] Jenkins-specific patterns (parameter injection, change variable injection)
+- [ ] `output.py` — Markdown report generation (Jinja2 template)
 - [ ] CI wrapper distribution (GitHub Action YAML, GitLab template, Azure task)
 - [ ] Pattern catalog versioning and update mechanism
 - [ ] Interactive TUI for triaging search results (textual or rich)

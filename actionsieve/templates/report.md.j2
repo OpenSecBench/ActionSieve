@@ -1,0 +1,47 @@
+# actionsieve Security Report
+
+**Scan date**: {{ scan_date }}
+**Findings**: {{ total }} ({{ summary }})
+{% if findings %}
+
+---
+{% for severity, group in grouped %}
+
+## {{ severity | capitalize }} ({{ group | length }})
+{% for f in group %}
+
+### {{ f.pattern_title }}
+
+| | |
+|---|---|
+| **Pattern** | `{{ f.pattern_id }}` |
+| **File** | `{{ f.file_path }}:{{ f.line }}` |
+| **Platform** | {{ f.platform }} |
+| **Severity** | {{ f.severity_computed or f.severity_base }} |
+| **Attacker model** | {{ f.attacker_model }} |
+| **Impact** | {{ f.impact if f.impact is string else f.impact | join(', ') }} |
+{%- if f.cwe %}
+| **CWE** | {{ f.cwe }} |
+{%- endif %}
+{% if f.evidence %}
+
+**Evidence**:
+{% for e in f.evidence %}
+- {{ e }}
+{%- endfor %}
+{%- endif %}
+{% if f.mitigations %}
+
+**Mitigations**:
+{% for m in f.mitigations %}
+- {{ m }}
+{%- endfor %}
+{%- endif %}
+
+---
+{%- endfor %}
+{%- endfor %}
+{% else %}
+
+No findings.
+{% endif %}

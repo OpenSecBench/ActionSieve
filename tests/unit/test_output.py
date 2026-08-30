@@ -3,7 +3,7 @@ import json
 import yaml
 
 from actionsieve.engine import Finding
-from actionsieve.output import render_json, render_sarif, render_yaml
+from actionsieve.output import render_json, render_markdown, render_sarif, render_yaml
 
 
 def _sample_finding() -> Finding:
@@ -124,3 +124,58 @@ class TestSARIF:
         text = render_sarif([])
         data = json.loads(text)
         assert data["runs"][0]["results"] == []
+
+
+class TestMarkdown:
+    def test_header(self) -> None:
+        text = render_markdown([_sample_finding()])
+        assert text.startswith("# actionsieve Security Report")
+
+    def test_summary_counts(self) -> None:
+        text = render_markdown([_sample_finding()])
+        assert "1 high" in text
+
+    def test_finding_fields(self) -> None:
+        text = render_markdown([_sample_finding()])
+        assert "`expr-injection-run`" in text
+        assert "`.github/workflows/ci.yml:12`" in text
+        assert "fork_pr" in text
+        assert "CWE-78" in text
+
+    def test_evidence(self) -> None:
+        text = render_markdown([_sample_finding()])
+        assert "Found '${{ github.event.pull_request.title }}' in run block" in text
+
+    def test_mitigations(self) -> None:
+        text = render_markdown([_sample_finding()])
+        assert "Use env var indirection" in text
+
+    def test_empty_findings(self) -> None:
+        text = render_markdown([])
+        assert "No findings." in text
+        assert "0" in text
+
+    def test_severity_grouping(self) -> None:
+        f1 = _sample_finding()
+        f1.severity_base = "critical"
+        f2 = _sample_finding()
+        f2.severity_base = "low"
+        f2.pattern_id = "other-pattern"
+        f2.pattern_title = "Other pattern"
+        text = render_markdown([f1, f2])
+        crit_pos = text.index("## Critical")
+        low_pos = text.index("## Low")
+        assert crit_pos < low_pos
+
+    def test_computed_severity_used(self) -> None:
+        f = _sample_finding()
+        f.severity_computed = "critical"
+        text = render_markdown([f])
+        assert "## Critical" in text
+        assert "1 critical" in text
+
+    def test_list_impact(self) -> None:
+        f = _sample_finding()
+        f.impact = ["rce", "secret_exfil"]
+        text = render_markdown([f])
+        assert "rce, secret_exfil" in text

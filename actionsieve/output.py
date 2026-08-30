@@ -1,18 +1,23 @@
-"""Result formatting — JSON, YAML, SARIF, and CycloneDX output."""
+"""Result formatting — JSON, YAML, SARIF, Markdown, and CycloneDX output."""
 
 from __future__ import annotations
 
 import json
 from dataclasses import asdict
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import yaml
+from jinja2 import Environment, FileSystemLoader
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from actionsieve.engine import Finding
     from actionsieve.inventory import Inventory
+
+_TEMPLATE_DIR = Path(__file__).parent / "templates"
+
+SEVERITY_ORDER_LIST = ["critical", "high", "medium", "low", "info"]
 
 
 def render(
@@ -26,6 +31,8 @@ def render(
         text = render_yaml(findings)
     elif fmt == "sarif":
         text = render_sarif(findings)
+    elif fmt == "markdown":
+        text = render_markdown(findings)
     else:
         msg = f"Unknown format: {fmt}"
         raise ValueError(msg)
@@ -109,6 +116,34 @@ def render_sarif(findings: list[Finding]) -> str:
     }
 
     return json.dumps(sarif, indent=2)
+
+
+def render_markdown(findings: list[Finding]) -> str:
+    grouped: list[tuple[str, list[Finding]]] = []
+    by_severity: dict[str, list[Finding]] = {}
+    for f in findings:
+        sev = f.severity_computed or f.severity_base
+        by_severity.setdefault(sev, []).append(f)
+    for sev in SEVERITY_ORDER_LIST:
+        if sev in by_severity:
+            grouped.append((sev, by_severity[sev]))
+
+    counts = [f"{len(g)} {s}" for s, g in grouped]
+    summary = ", ".join(counts) if counts else "none"
+
+    env = Environment(
+        loader=FileSystemLoader(str(_TEMPLATE_DIR)),
+        autoescape=False,  # noqa: S701 — Markdown output, not HTML
+        keep_trailing_newline=True,
+    )
+    template = env.get_template("report.md.j2")
+    return template.render(
+        scan_date=datetime.now(UTC).date().isoformat(),
+        total=len(findings),
+        summary=summary,
+        findings=findings,
+        grouped=grouped,
+    )
 
 
 def _finding_dict(f: Finding) -> dict[str, Any]:

@@ -8,7 +8,7 @@ import click
 
 from actionsieve import __version__
 
-FORMATS = ["json", "yaml", "sarif"]
+FORMATS = ["json", "yaml", "sarif", "markdown"]
 FAIL_LEVELS = ["info", "low", "medium", "high", "critical"]
 
 
