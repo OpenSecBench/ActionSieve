@@ -1,0 +1,70 @@
+[project]
+name = "actionsieve"
+version = "0.1.0"
+description = "Multi-platform CI/CD pipeline security scanner"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [
+    { name = "James Golovich", email = "james@gnuinter.net" },
+]
+keywords = ["security", "cicd", "github-actions", "gitlab-ci", "supply-chain"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+    "Typing :: Typed",
+]
+dependencies = [
+    "click>=8.1",
+    "pyyaml>=6.0",
+    "jsonschema>=4.20",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.11",
+    "mypy>=1.10",
+    "pre-commit>=4.0",
+    "types-PyYAML>=6.0",
+    "types-jsonschema>=4.20",
+]
+
+[project.scripts]
+actionsieve = "actionsieve.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/OpenSecBench/actionsieve"
+Repository = "https://github.com/OpenSecBench/actionsieve"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["actionsieve"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
