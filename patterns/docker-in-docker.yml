@@ -26,6 +26,7 @@ patterns:
       in_block: run
       grep_patterns:
         - 'docker run '
+        - 'docker build '
         - 'docker exec '
         - '--privileged'
         - '-v /var/run/docker.sock'
@@ -38,6 +39,30 @@ patterns:
       - Restrict fork PR workflows from accessing Docker
     cwe: CWE-250
     tags: [privilege-escalation, docker, container-escape]
+    status: active
+
+  - id: docker-socket-config
+    title: Docker daemon exposure via configuration
+    description: |
+      The Docker daemon socket is exposed through environment variables
+      (DOCKER_HOST) or a DinD service image rather than through shell
+      commands. This grants the CI step full Docker API access and the
+      same privilege escalation risks as mounting the socket directly.
+    platforms: "all"
+    trigger: [any]
+    trust_boundary: ci_config -> host_docker_daemon
+    attacker_model: contributor
+    impact: [rce]
+    severity_base: medium
+    requires_self_hosted: false
+    detection:
+      type: structural
+    mitigations:
+      - Use rootless Docker or Podman for unprivileged builds
+      - Restrict DOCKER_HOST to isolated build agents
+      - Use dedicated container build services instead of DinD
+    cwe: CWE-250
+    tags: [privilege-escalation, docker, container-escape, config]
     status: active
 
   - id: docker-plugin-privileged

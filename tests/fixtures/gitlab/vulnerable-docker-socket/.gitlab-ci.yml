@@ -1,0 +1,7 @@
+build:
+  image: docker:dind
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
+  script:
+    - docker info
+    - echo "building"

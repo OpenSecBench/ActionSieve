@@ -273,6 +273,36 @@ class TestDockerInDocker:
         assert len(dind_findings) == 0
 
 
+class TestDockerSocketConfig:
+    def test_detects_docker_host_in_env(self) -> None:
+        from actionsieve.providers.gitlab import GitLabProvider
+
+        gitlab_fixtures = Path(__file__).parent.parent / "fixtures" / "gitlab"
+        provider = GitLabProvider()
+        model = provider.parse(gitlab_fixtures / "vulnerable-docker-socket" / ".gitlab-ci.yml")
+        patterns = load_patterns(platform="gitlab")
+        findings = match(model, patterns)
+        socket_findings = [f for f in findings if f.pattern_id == "docker-socket-config"]
+        assert len(socket_findings) >= 1
+        evidence = " ".join(e for f in socket_findings for e in f.evidence)
+        assert "DOCKER_HOST" in evidence
+
+    def test_detects_dind_image(self) -> None:
+        from actionsieve.providers.gitlab import GitLabProvider
+
+        gitlab_fixtures = Path(__file__).parent.parent / "fixtures" / "gitlab"
+        provider = GitLabProvider()
+        model = provider.parse(gitlab_fixtures / "vulnerable-docker-socket" / ".gitlab-ci.yml")
+        patterns = load_patterns(platform="gitlab")
+        findings = match(model, patterns)
+        dind_findings = [
+            f
+            for f in findings
+            if f.pattern_id == "docker-socket-config" and "DinD" in " ".join(f.evidence)
+        ]
+        assert len(dind_findings) >= 1
+
+
 class TestUnpinnedContainerImage:
     def test_detects_unpinned_tag(self) -> None:
         findings = _scan("vulnerable/.github/workflows/unpinned-container.yml")

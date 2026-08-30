@@ -41,6 +41,7 @@ def match_structural(
         "unpinned-container-image": _match_unpinned_image,
         "fork-pr-cache-write": _match_fork_cache_write,
         "docker-plugin-privileged": _match_docker_plugin_privileged,
+        "docker-socket-config": _match_docker_socket_config,
         "issue-comment-fork-checkout": _match_issue_comment_fork_checkout,
         "codebuild-plaintext-secrets": match_codebuild_plaintext_secrets,
         "codebuild-privileged-mode": match_codebuild_privileged_mode,
@@ -541,6 +542,62 @@ def _match_issue_comment_fork_checkout(
                 line=0,
             )
         )
+    return findings
+
+
+_DOCKER_SOCKET_PATTERNS = (
+    "/var/run/docker.sock",
+    "unix:///var/run/docker.sock",
+    "tcp://docker:",
+    "tcp://localhost:2375",
+    "tcp://localhost:2376",
+)
+
+_DIND_IMAGES = ("docker:dind", "docker:stable-dind", "docker:latest-dind")
+
+
+def _match_docker_socket_config(
+    model: WorkflowModel, pattern: dict[str, Any], make_finding: MakeFinding
+) -> list[Finding]:
+    findings: list[Finding] = []
+    wf_docker_host = model.env.get("DOCKER_HOST", "")
+    for job in model.jobs:
+        docker_host = job.env.get("DOCKER_HOST", "") or wf_docker_host
+        if docker_host and any(p in docker_host for p in _DOCKER_SOCKET_PATTERNS):
+            findings.append(
+                make_finding(
+                    pattern=pattern,
+                    model=model,
+                    job=job,
+                    step=None,
+                    evidence=[f"DOCKER_HOST={docker_host} exposes Docker daemon"],
+                    line=0,
+                )
+            )
+        for step in job.steps:
+            for key, val in step.env.items():
+                if key.upper() == "DOCKER_HOST" and any(p in val for p in _DOCKER_SOCKET_PATTERNS):
+                    findings.append(
+                        make_finding(
+                            pattern=pattern,
+                            model=model,
+                            job=job,
+                            step=step,
+                            evidence=[f"DOCKER_HOST={val} exposes Docker daemon"],
+                            line=0,
+                        )
+                    )
+        if job.image and any(job.image.startswith(img) for img in _DIND_IMAGES):
+            findings.append(
+                make_finding(
+                    pattern=pattern,
+                    model=model,
+                    job=job,
+                    step=None,
+                    evidence=[f"DinD service image: {job.image}"],
+                    line=0,
+                )
+            )
     return findings
 
 
