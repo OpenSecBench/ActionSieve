@@ -217,7 +217,7 @@
 ## Backlog — ideas from plumber
 
 - [x] `actionsieve explain <pattern-id>` — CLI subcommand that pretty-prints a pattern's full details (description, attack scenario, mitigations, references, CWE). Helps triage findings without leaving the terminal.
-- [ ] Container image pinning — detect unpinned container images (`image: node:20` vs `image: node@sha256:...`) as supply chain risk. Applies to all platforms (GitHub `container:`, GitLab `image:`, Azure `container:`, CircleCI `docker:`, Bitbucket `image:`). New pattern file `patterns/container-images.yml`. Needs per-provider structural matcher — images appear differently per platform.
+- [x] Container image pinning — detect unpinned container images (`image: node:20` vs `image: node@sha256:...`) as supply chain risk. All six providers extract `Job.image` and structural matcher flags missing `@sha256:` digest. Pattern file `patterns/container-images.yml`.
 - [x] Unverified script execution — detect `curl | bash`, `wget | sh`, `base64 -d | sh` and similar pipe-to-shell patterns in run blocks. Universal grep pattern across all platforms. New pattern file `patterns/unsafe-scripts.yml`.
 - [ ] Docker-in-Docker detection — flag `docker run` / `docker build` inside CI steps, GitLab `services: [docker:dind]`, `--privileged` containers. Privilege escalation vector on shared runners.
 - [ ] `actionsieve profile resolve` — CLI subcommand that prints the effective profile after overlay resolution. Debugging aid for custom profile configs.
