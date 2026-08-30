@@ -111,6 +111,66 @@ jobs:
         assert test_job.needs == ["Build"]
 
 
+class TestPoolParsing:
+    def test_toplevel_pool_used_for_inline_steps(
+        self, provider: AzureProvider, tmp_path: Path
+    ) -> None:
+        p = _write_pipeline(
+            tmp_path,
+            """\
+pool:
+  name: self-hosted
+
+steps:
+  - script: echo hello
+""",
+        )
+        wf = provider.parse(p)
+        runner = wf.jobs[0].runner
+        assert runner.is_self_hosted is True
+        assert "self-hosted" in runner.labels
+
+    def test_toplevel_pool_string_form(self, provider: AzureProvider, tmp_path: Path) -> None:
+        p = _write_pipeline(
+            tmp_path,
+            """\
+pool: my-pool
+
+steps:
+  - script: echo hello
+""",
+        )
+        wf = provider.parse(p)
+        assert "my-pool" in wf.jobs[0].runner.labels
+
+    def test_toplevel_pool_vmimage(self, provider: AzureProvider, tmp_path: Path) -> None:
+        p = _write_pipeline(
+            tmp_path,
+            """\
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - script: echo hello
+""",
+        )
+        wf = provider.parse(p)
+        runner = wf.jobs[0].runner
+        assert runner.is_self_hosted is False
+        assert runner.is_managed is True
+
+    def test_no_pool_defaults(self, provider: AzureProvider, tmp_path: Path) -> None:
+        p = _write_pipeline(
+            tmp_path,
+            """\
+steps:
+  - script: echo hello
+""",
+        )
+        wf = provider.parse(p)
+        assert "default" in wf.jobs[0].runner.labels
+
+
 class TestParseTriggers:
     def test_branch_list_trigger(self, provider: AzureProvider, tmp_path: Path) -> None:
         p = _write_pipeline(

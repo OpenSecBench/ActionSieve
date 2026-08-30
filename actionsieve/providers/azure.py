@@ -155,6 +155,14 @@ def _parse_variables(raw: dict[str, Any]) -> dict[str, str]:
     return result
 
 
+def _pool_to_runner(pool: Any) -> str:
+    if isinstance(pool, dict):
+        return str(pool.get("vmImage") or pool.get("name") or "default")
+    if isinstance(pool, str):
+        return pool
+    return "default"
+
+
 def _parse_pipeline(raw: dict[str, Any], file_text: str) -> list[Job]:
     lines = file_text.splitlines()
 
@@ -171,7 +179,7 @@ def _parse_pipeline(raw: dict[str, Any], file_text: str) -> list[Job]:
         return [
             Job(
                 id="default",
-                runner=make_runner("default"),
+                runner=make_runner(_pool_to_runner(raw.get("pool"))),
                 steps=_parse_steps(steps, lines),
                 secrets_referenced=_find_secrets({"steps": steps}),
             )
@@ -233,14 +241,7 @@ def _parse_job(
     job_key = "deployment" if is_deployment else "job"
     job_id = str(data.get(job_key, stage))
 
-    pool = data.get("pool", {})
-    runner_raw = "default"
-    if isinstance(pool, dict):
-        vm_image = pool.get("vmImage", "")
-        pool_name = pool.get("name", "")
-        runner_raw = str(vm_image or pool_name or "default")
-    elif isinstance(pool, str):
-        runner_raw = pool
+    runner_raw = _pool_to_runner(data.get("pool"))
 
     depends = data.get("dependsOn", [])
     needs: list[str] = []
