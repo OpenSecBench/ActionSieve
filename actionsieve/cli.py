@@ -472,6 +472,15 @@ def search(
         raise SystemExit(1) from None
 
 
+def _register_corpus() -> None:
+    from actionsieve.corpus import corpus
+
+    main.add_command(corpus)
+
+
+_register_corpus()
+
+
 @main.group()
 def profile() -> None:
     """Environment profile management."""
