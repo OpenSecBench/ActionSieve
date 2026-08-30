@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "actionsieve pattern file",
+  "type": "object",
+  "required": ["patterns"],
+  "additionalProperties": false,
+  "properties": {
+    "patterns": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/pattern" }
+    }
+  },
+  "$defs": {
+    "pattern": {
+      "type": "object",
+      "required": ["id", "title", "description", "platforms", "attacker_model", "impact", "severity_base", "detection"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Globally unique kebab-case identifier"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Short human-readable name"
+        },
+        "description": {
+          "type": "string",
+          "description": "What the pattern is and why it matters"
+        },
+        "platforms": {
+          "oneOf": [
+            { "const": "all" },
+            {
+              "type": "array",
+              "items": { "enum": ["github", "gitlab", "azure", "jenkins", "circleci", "bitbucket", "buildkite", "drone", "codebuild", "cloudbuild"] },
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          ]
+        },
+        "trigger": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "CI event types that activate this pattern"
+        },
+        "trust_boundary": {
+          "type": "string",
+          "description": "Source -> sink trust boundary crossed"
+        },
+        "attacker_model": {
+          "enum": ["fork_pr", "contributor", "admin", "any", "action_maintainer_compromise"],
+          "description": "Minimum access level required to exploit"
+        },
+        "impact": {
+          "oneOf": [
+            { "$ref": "#/$defs/impact_class" },
+            {
+              "type": "array",
+              "items": { "$ref": "#/$defs/impact_class" },
+              "minItems": 1
+            }
+          ]
+        },
+        "severity_base": {
+          "enum": ["critical", "high", "medium", "low", "info"],
+          "description": "Base severity before context modifiers"
+        },
+        "requires_self_hosted": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only relevant on self-hosted runners"
+        },
+        "severity_notes": {
+          "type": "string",
+          "description": "When this is dangerous vs noise"
+        },
+        "detection": {
+          "$ref": "#/$defs/detection"
+        },
+        "mitigations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "actions_versions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/action_version" }
+        },
+        "references": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" }
+        },
+        "cwe": {
+          "type": "string",
+          "pattern": "^CWE-[0-9]+$"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "status": {
+          "enum": ["active", "documented", "deprecated"],
+          "default": "documented"
+        },
+        "diff_scope": {
+          "enum": ["always", "changeset"],
+          "default": "always",
+          "description": "Whether changeset context affects this finding"
+        },
+        "diff_effect": {
+          "enum": ["suppress", "elevate"],
+          "description": "How changeset match affects the finding"
+        },
+        "reachable_files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Globs matched against changed files (repo-root-relative)"
+        }
+      },
+      "if": {
+        "properties": { "diff_scope": { "const": "changeset" } },
+        "required": ["diff_scope"]
+      },
+      "then": {
+        "required": ["diff_effect", "reachable_files"]
+      }
+    },
+    "impact_class": {
+      "enum": ["rce", "secret_exfil", "supply_chain", "repo_write", "info_disclosure", "dos", "state_manipulation"]
+    },
+    "detection": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": ["single_step", "cross_step", "cross_job", "structural", "supply_chain", "advisory"]
+        },
+        "in_block": { "type": "string" },
+        "match": { "type": "string" },
+        "grep_patterns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "safe_contexts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "exclude_if_in": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "check_for": { "type": "string" },
+        "check_chain": { "type": "string" },
+        "then_check": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "safe_if": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "dangerous_patterns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "look_for": { "type": "string" },
+        "chain": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "checks": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "platform_rules": {
+          "type": "object",
+          "additionalProperties": { "type": "object" }
+        },
+        "exclude_safe_dispatch_inputs": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "action_version": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string" },
+        "version": { "type": "string" },
+        "sha": { "type": ["string", "null"] },
+        "notes": { "type": "string" }
+      },
+      "required": ["action", "notes"]
+    }
+  }
+}

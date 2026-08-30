@@ -11,7 +11,18 @@ import yaml
 if TYPE_CHECKING:
     from actionsieve.inventory import Component, Inventory
 
-DEFAULT_DB = Path(__file__).parent.parent / "patterns" / "advisories"
+
+def _default_db() -> Path | None:
+    import os
+
+    from actionsieve.patterns import ENV_VAR
+
+    env = os.environ.get(ENV_VAR)
+    if env:
+        candidate = Path(env) / "advisories"
+        if candidate.is_dir():
+            return candidate
+    return None
 
 
 @dataclass
@@ -36,7 +47,9 @@ class Advisory:
 
 
 def load_advisories(db_path: Path | None = None) -> list[Advisory]:
-    path = db_path or DEFAULT_DB
+    path = db_path or _default_db()
+    if path is None:
+        return []
     advisories: list[Advisory] = []
 
     if path.is_file():

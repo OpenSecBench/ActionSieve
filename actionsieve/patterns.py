@@ -3,25 +3,37 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 import jsonschema
 import yaml
 
-BUILTIN_PATTERNS_DIR = Path(__file__).parent.parent / "patterns"
-SCHEMA_PATH = BUILTIN_PATTERNS_DIR / "schema.json"
+SCHEMA_PATH = Path(__file__).parent / "schema.json"
+
+ENV_VAR = "ACTIONSIEVE_PATTERNS"
 
 
 class PatternError(Exception):
     """Raised when a pattern file is invalid."""
 
 
+def _resolve_path(path: Path | None) -> Path:
+    if path is not None:
+        return path
+    env = os.environ.get(ENV_VAR)
+    if env:
+        return Path(env)
+    msg = f"No patterns path. Pass --patterns or set {ENV_VAR}."
+    raise PatternError(msg)
+
+
 def load_patterns(
     path: Path | None = None,
     platform: str | None = None,
 ) -> list[dict[str, Any]]:
-    source = path or BUILTIN_PATTERNS_DIR
+    source = _resolve_path(path)
     raw_patterns = _load_from_path(source)
     _enforce_unique_ids(raw_patterns)
     if platform:
