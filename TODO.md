@@ -207,7 +207,7 @@
 
 ## Backlog — from corpus testing
 
-- [ ] Composite action scanning — resolve `uses: ./path` to `action.yml`, scan composite steps for injection
+- [x] Composite action scanning — resolve `uses: ./path` to `action.yml`, scan composite steps for injection
 - [x] Reusable workflow ref pinning — extend `mutable-action-ref` to job-level `uses:` for reusable workflow refs
 - [x] Missing `permissions:` block — flag GitHub workflows without top-level or job-level `permissions:` (`patterns/hardening.yml`)
 - [x] Checkout `persist-credentials` — flag `actions/checkout` without `persist-credentials: false` (`patterns/hardening.yml`)
@@ -219,11 +219,11 @@
 - [x] `actionsieve explain <pattern-id>` — CLI subcommand that pretty-prints a pattern's full details (description, attack scenario, mitigations, references, CWE). Helps triage findings without leaving the terminal.
 - [x] Container image pinning — detect unpinned container images (`image: node:20` vs `image: node@sha256:...`) as supply chain risk. All six providers extract `Job.image` and structural matcher flags missing `@sha256:` digest. Pattern file `patterns/container-images.yml`.
 - [x] Unverified script execution — detect `curl | bash`, `wget | sh`, `base64 -d | sh` and similar pipe-to-shell patterns in run blocks. Universal grep pattern across all platforms. New pattern file `patterns/unsafe-scripts.yml`.
-- [ ] Docker-in-Docker detection — flag `docker run` / `docker build` inside CI steps, GitLab `services: [docker:dind]`, `--privileged` containers. Privilege escalation vector on shared runners.
+- [x] Docker-in-Docker detection — flag `docker run` / `docker build` inside CI steps, GitLab `services: [docker:dind]`, `--privileged` containers. Privilege escalation vector on shared runners.
 - [ ] `actionsieve profile resolve` — CLI subcommand that prints the effective profile after overlay resolution. Debugging aid for custom profile configs.
 - [ ] OCSF output format — Open Cybersecurity Standards Framework Compliance Finding (schema 1.8.0) for GRC platform integration. Another `output.py` formatter.
-- [ ] Static cloud credentials detection — flag long-lived AWS access keys (`AWS_ACCESS_KEY_ID`), GCP service account JSON, Azure client secrets in env/secrets when OIDC federation is available (`aws-actions/configure-aws-credentials` with `role-to-assume`, `google-github-actions/auth` with `workload_identity_provider`). OIDC is the secure path; static keys are a secret exposure risk. New pattern file `patterns/cloud-credentials.yml`.
-- [ ] Cache poisoning detection — flag CI cache writes (`actions/cache`, `save_cache`, `cache:` directives) in workflows reachable from fork PRs. Attacker-controlled fork can poison the cache with malicious build artifacts or dependencies that persist into trusted branch builds. Needs cross-step awareness: cache save step + fork-reachable trigger + shared cache key.
+- [x] Static cloud credentials detection — flag long-lived AWS access keys (`AWS_ACCESS_KEY_ID`), GCP service account JSON, Azure client secrets in env/secrets when OIDC federation is available (`aws-actions/configure-aws-credentials` with `role-to-assume`, `google-github-actions/auth` with `workload_identity_provider`). OIDC is the secure path; static keys are a secret exposure risk. New pattern file `patterns/cloud-credentials.yml`.
+- [x] Cache poisoning detection — flag CI cache writes (`actions/cache`, `save_cache`, `cache:` directives) in workflows reachable from fork PRs. Attacker-controlled fork can poison the cache with malicious build artifacts or dependencies that persist into trusted branch builds. Structural matcher: cache save step + fork-reachable trigger.
 
 ## Ongoing
 
