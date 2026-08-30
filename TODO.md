@@ -2,106 +2,106 @@
 
 ## Phase 0: Project scaffolding
 
-- [ ] `.gitignore` (Python: __pycache__, *.pyc, .venv/, dist/, *.egg-info/, .mypy_cache/, .ruff_cache/, .pytest_cache/)
-- [ ] `pyproject.toml` with project metadata, entry point, dependencies, dev extras:
+- [x] `.gitignore` (Python: __pycache__, *.pyc, .venv/, dist/, *.egg-info/, .mypy_cache/, .ruff_cache/, .pytest_cache/)
+- [x] `pyproject.toml` with project metadata, entry point, dependencies, dev extras:
   - Runtime: click, pyyaml, jsonschema, jinja2
   - Dev: pytest, ruff, mypy, pre-commit
 - [ ] `uv.lock` for reproducible builds
-- [ ] `.pre-commit-config.yaml` (ruff check, ruff format, mypy, pytest)
-- [ ] `ruff.toml` (line length, target version, select rules)
-- [ ] `mypy.ini` or pyproject section (strict mode)
-- [ ] `patterns/schema.json` — JSON Schema for pattern catalog validation
-- [ ] Directory structure: actionsieve/, actionsieve/providers/, tests/unit/, tests/unit/providers/, tests/e2e/, tests/fixtures/
-- [ ] Empty `__init__.py` files, basic cli.py with click group
-- [ ] Verify: `uv pip install -e ".[dev]" && pytest && ruff check . && mypy actionsieve/`
-- [ ] Initial commit
+- [x] `.pre-commit-config.yaml` (ruff check, ruff format, mypy, pytest)
+- [x] `ruff.toml` (line length, target version, select rules)
+- [x] `mypy.ini` or pyproject section (strict mode)
+- [x] `patterns/schema.json` — JSON Schema for pattern catalog validation
+- [x] Directory structure: actionsieve/, actionsieve/providers/, tests/unit/, tests/unit/providers/, tests/e2e/, tests/fixtures/
+- [x] Empty `__init__.py` files, basic cli.py with click group
+- [x] Verify: `uv pip install -e ".[dev]" && pytest && ruff check . && mypy actionsieve/`
+- [x] Initial commit
 
 ## Phase 1: GitHub Actions scanner (MVP)
 
 ### Provider interface + GitHub provider
-- [ ] `providers/__init__.py` — Provider Protocol class (detect, find_files, parse, resolve_ref, expression_syntax, search_query)
-- [ ] `providers/__init__.py` — auto_detect(repo_path) returns list of matching providers
-- [ ] `providers/github.py` — detect: `.github/workflows/` exists
-- [ ] `providers/github.py` — find_files: glob `*.yml` + `*.yaml` in `.github/workflows/`
-- [ ] `providers/github.py` — parse: YAML → WorkflowModel
-- [ ] `providers/github.py` — expression_syntax: `${{ }}` interpolation rules
-- [ ] Unit tests for GitHub provider (parse known fixtures, reject malformed)
+- [x] `providers/__init__.py` — Provider Protocol class (detect, find_files, parse, resolve_ref, expression_syntax, search_query)
+- [x] `providers/__init__.py` — auto_detect(repo_path) returns list of matching providers
+- [x] `providers/github.py` — detect: `.github/workflows/` exists
+- [x] `providers/github.py` — find_files: glob `*.yml` + `*.yaml` in `.github/workflows/`
+- [x] `providers/github.py` — parse: YAML → WorkflowModel
+- [x] `providers/github.py` — expression_syntax: `${{ }}` interpolation rules
+- [x] Unit tests for GitHub provider (parse known fixtures, reject malformed)
 
 ### Workflow model
-- [ ] `model.py` — dataclasses: WorkflowModel, Job, Step, Trigger, Expression, ComponentRef, Permission
-- [ ] Platform field on WorkflowModel
-- [ ] Normalized block types (shell_command, expression, component_ref)
-- [ ] Unit tests for model construction and validation
+- [x] `model.py` — dataclasses: WorkflowModel, Job, Step, Trigger, Expression, ComponentRef, Permission
+- [x] Platform field on WorkflowModel
+- [x] Normalized block types (shell_command, expression, component_ref)
+- [x] Unit tests for model construction and validation
 
 ### Pattern catalog
-- [ ] `patterns.py` — load all `*.yml` from patterns directory, merge, validate
-- [ ] `patterns.py` — filter patterns by platform
-- [ ] `patterns.py` — enforce globally unique IDs across files
-- [ ] Split `cicd-attack-patterns.yml` from disclosures project into per-class files:
-  - [ ] `patterns/expression-injection.yml`
-  - [ ] `patterns/artifact-trust.yml`
-  - [ ] `patterns/dangerous-triggers.yml`
-  - [ ] `patterns/output-injection.yml`
-  - [ ] `patterns/supply-chain.yml`
-  - [ ] `patterns/self-hosted-runners.yml`
-  - [ ] `patterns/secret-exposure.yml`
-  - [ ] `patterns/template-injection.yml`
-- [ ] Add `platforms` field to each pattern (default: all)
-- [ ] `patterns/schema.json` — JSON Schema for pattern structure
-- [ ] Unit tests: load catalog, validate schema, reject bad patterns, detect duplicate IDs
+- [x] `patterns.py` — load all `*.yml` from patterns directory, merge, validate
+- [x] `patterns.py` — filter patterns by platform
+- [x] `patterns.py` — enforce globally unique IDs across files
+- [x] Split `cicd-attack-patterns.yml` from disclosures project into per-class files:
+  - [x] `patterns/expression-injection.yml`
+  - [x] `patterns/artifact-trust.yml`
+  - [x] `patterns/dangerous-triggers.yml`
+  - [x] `patterns/output-injection.yml`
+  - [x] `patterns/supply-chain.yml`
+  - [x] `patterns/self-hosted-runners.yml`
+  - [x] `patterns/secret-exposure.yml`
+  - [x] `patterns/template-injection.yml`
+- [x] Add `platforms` field to each pattern (default: all)
+- [x] `patterns/schema.json` — JSON Schema for pattern structure
+- [x] Unit tests: load catalog, validate schema, reject bad patterns, detect duplicate IDs
 
 ### Pattern engine
-- [ ] `engine.py` — single_step pattern matching (regex in specific block types)
-- [ ] `engine.py` — structural pattern matching (trigger checks, permission checks, checkout ref analysis)
-- [ ] `engine.py` — platform_rules handling (pick rules for current provider)
-- [ ] Unit tests for each pattern type against vulnerable + safe fixtures
+- [x] `engine.py` — single_step pattern matching (regex in specific block types)
+- [x] `engine.py` — structural pattern matching (trigger checks, permission checks, checkout ref analysis)
+- [x] `engine.py` — platform_rules handling (pick rules for current provider)
+- [x] Unit tests for each pattern type against vulnerable + safe fixtures
 
 ### Severity + environment profiles
-- [ ] `severity.py` — stage 1: static severity from base + trigger + runner + secrets + permissions + fork_reachable
-- [ ] `severity.py` — stage 2: adjust by environment profile (suppress, elevate, modifier rules)
-- [ ] `severity.py` — output both static_severity and computed_severity in results
-- [ ] `profiles.py` — load profile from `.actionsieve.yml`, `~/.config/actionsieve/profile.yml`, or `--profile`
+- [x] `severity.py` — stage 1: static severity from base + trigger + runner + secrets + permissions + fork_reachable
+- [x] `severity.py` — stage 2: adjust by environment profile (suppress, elevate, modifier rules)
+- [x] `severity.py` — output both static_severity and computed_severity in results
+- [x] `profiles.py` — load profile from `.actionsieve.yml`, `~/.config/actionsieve/profile.yml`, or `--profile`
 - [ ] `profiles.py` — profile schema validation
-- [ ] `profiles.py` — built-in presets: hosted-public, hosted-private, self-hosted, hardened
-- [ ] `profiles.py` — `extends:` support (inherit preset, override specific fields)
-- [ ] `profiles.py` — suppress/elevate category handling
-- [ ] `cli.py` — `--profile` flag (path or preset name)
-- [ ] `cli.py` — `--show-suppressed` flag (include suppressed findings in output)
-- [ ] Unit tests: same pattern, different contexts → different severities
-- [ ] Unit tests: same finding, different profiles → different computed severities
-- [ ] Unit tests: suppress category hides findings, --show-suppressed reveals them
+- [x] `profiles.py` — built-in presets: hosted-public, hosted-private, self-hosted, hardened
+- [x] `profiles.py` — `extends:` support (inherit preset, override specific fields)
+- [x] `profiles.py` — suppress/elevate category handling
+- [x] `cli.py` — `--profile` flag (path or preset name)
+- [x] `cli.py` — `--show-suppressed` flag (include suppressed findings in output)
+- [x] Unit tests: same pattern, different contexts → different severities
+- [x] Unit tests: same finding, different profiles → different computed severities
+- [x] Unit tests: suppress category hides findings, --show-suppressed reveals them
 
 ### Output
-- [ ] `output.py` — JSON output (findings list)
-- [ ] `output.py` — YAML output
-- [ ] `output.py` — SARIF output (for GitHub code scanning integration)
-- [ ] Unit tests for each output format
+- [x] `output.py` — JSON output (findings list)
+- [x] `output.py` — YAML output
+- [x] `output.py` — SARIF output (for GitHub code scanning integration)
+- [x] Unit tests for each output format
 
 ### CLI
-- [ ] `cli.py` — `actionsieve scan <path>` command
-- [ ] `cli.py` — `--platform` flag (auto-detect by default)
-- [ ] `cli.py` — `--format` flag (json, yaml, sarif)
-- [ ] `cli.py` — `--output` flag (write to file instead of stdout)
-- [ ] `cli.py` — `--patterns` flag (custom catalog path, directory or file)
-- [ ] `cli.py` — `--profile` flag (path or preset name)
-- [ ] `cli.py` — `--fail-on` flag (warning, critical, etc.)
-- [ ] `cli.py` — `--show-suppressed` flag
-- [ ] `cli.py` — `--diff <base-ref>` flag (scan only changed pipeline files)
-- [ ] `cli.py` — `--offline` flag (skip network calls in resolve_ref)
-- [ ] `cli.py` — exit codes (0/1/2/3)
-- [ ] E2E tests: scan fixture repos, verify exit codes and output
+- [x] `cli.py` — `actionsieve scan <path>` command
+- [x] `cli.py` — `--platform` flag (auto-detect by default)
+- [x] `cli.py` — `--format` flag (json, yaml, sarif)
+- [x] `cli.py` — `--output` flag (write to file instead of stdout)
+- [x] `cli.py` — `--patterns` flag (custom catalog path, directory or file)
+- [x] `cli.py` — `--profile` flag (path or preset name)
+- [x] `cli.py` — `--fail-on` flag (warning, critical, etc.)
+- [x] `cli.py` — `--show-suppressed` flag
+- [x] `cli.py` — `--diff <base-ref>` flag (scan only changed pipeline files)
+- [x] `cli.py` — `--offline` flag (skip network calls in resolve_ref)
+- [x] `cli.py` — exit codes (0/1/2/3)
+- [x] E2E tests: scan fixture repos, verify exit codes and output
 - [ ] E2E tests: --diff mode only reports findings in changed files
-- [ ] E2E tests: --profile adjusts severity and suppresses as expected
+- [x] E2E tests: --profile adjusts severity and suppresses as expected
 
 ### Test fixtures (GitHub)
-- [ ] Vulnerable: expression injection in run block
-- [ ] Vulnerable: pull_request_target + checkout head
-- [ ] Vulnerable: unpinned third-party action
-- [ ] Vulnerable: self-hosted runner with secrets
-- [ ] Safe: expression injection mitigated via env var indirection
-- [ ] Safe: pull_request_target with base-only checkout
-- [ ] Safe: all actions pinned to SHA
-- [ ] Safe: minimal permissions, no secrets
+- [x] Vulnerable: expression injection in run block
+- [x] Vulnerable: pull_request_target + checkout head
+- [x] Vulnerable: unpinned third-party action
+- [x] Vulnerable: self-hosted runner with secrets
+- [x] Safe: expression injection mitigated via env var indirection
+- [x] Safe: pull_request_target with base-only checkout
+- [x] Safe: all actions pinned to SHA
+- [x] Safe: minimal permissions, no secrets
 
 ## Phase 2: Component inventory + supply chain
 
