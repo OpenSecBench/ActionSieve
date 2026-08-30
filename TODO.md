@@ -246,17 +246,17 @@ Full spec + design decisions: `../actionsieve-corpus/bugs/diff-aware-scanning.md
 - [x] Schema validation tests
 
 ### Step 3: Context module
-- [ ] `context.py` — `ScanContext` dataclass (changed_files, trigger, actor, mode)
-- [ ] `--changed-files` parsing: comma-separated inline, or read from file/stdin if value is `-` or a file path
-- [ ] CI auto-detection: GitHub Actions (`GITHUB_EVENT_NAME`, `GITHUB_BASE_REF`)
-- [ ] CI auto-detection: GitLab CI (`CI_PIPELINE_SOURCE`, `CI_MERGE_REQUEST_DIFF_BASE_SHA`)
-- [ ] CI auto-detection: Azure Pipelines (`BUILD_REASON`, `SYSTEM_PULLREQUEST_TARGETBRANCH`)
-- [ ] CI auto-detection: Jenkins, CircleCI, Bitbucket, Buildkite, Drone
-- [ ] `detect_ci_context()` — try each platform, return `ScanContext` or `None`
-- [ ] `--context` file parsing (YAML dict with same fields)
-- [ ] Precedence: explicit flags > context file > auto-detected > None (static mode)
-- [ ] Changed files derived via `git diff --name-only` against detected base ref
-- [ ] Unit tests with mocked env vars for each platform
+- [x] `context.py` — `ScanContext` dataclass (changed_files, trigger, actor, mode)
+- [x] `--changed-files` parsing: comma-separated inline, or read from file/stdin if value is `-` or a file path
+- [x] CI auto-detection: GitHub Actions (`GITHUB_EVENT_NAME`, `GITHUB_BASE_REF`)
+- [x] CI auto-detection: GitLab CI (`CI_PIPELINE_SOURCE`, `CI_MERGE_REQUEST_DIFF_BASE_SHA`)
+- [x] CI auto-detection: Azure Pipelines (`BUILD_REASON`, `SYSTEM_PULLREQUEST_TARGETBRANCH`)
+- [x] CI auto-detection: Jenkins, CircleCI, Bitbucket, Buildkite, Drone
+- [x] `detect_ci_context()` — try each platform, return `ScanContext` or `None`
+- [x] `--context` file parsing (YAML dict with same fields)
+- [x] Precedence: explicit flags > context file > auto-detected > None (static mode)
+- [x] Changed files derived via `git diff --name-only` against detected base ref
+- [x] Unit tests with mocked env vars for each platform
 
 ### Step 4: CLI flags
 - [ ] `--changed-files` option in `cli.py`
