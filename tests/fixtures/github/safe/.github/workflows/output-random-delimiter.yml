@@ -1,0 +1,9 @@
+name: Process PR (safe)
+on: pull_request
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Processing PR #${{ github.event.pull_request.number }}"

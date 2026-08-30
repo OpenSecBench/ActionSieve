@@ -66,6 +66,90 @@ class TestSelfHosted:
         assert len(sh_findings) == 0
 
 
+class TestGithubScriptInjection:
+    def test_detects_tainted_expr_in_script(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/github-script-injection.yml")
+        script_findings = [f for f in findings if f.pattern_id == "expr-injection-github-script"]
+        assert len(script_findings) >= 1
+
+    def test_safe_env_indirection_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/github-script-env.yml")
+        script_findings = [f for f in findings if f.pattern_id == "expr-injection-github-script"]
+        assert len(script_findings) == 0
+
+
+class TestDispatchInjection:
+    def test_detects_input_in_run(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/dispatch-injection.yml")
+        dispatch_findings = [f for f in findings if f.pattern_id == "dispatch-input-injection"]
+        assert len(dispatch_findings) >= 1
+
+    def test_safe_env_indirection_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/dispatch-safe.yml")
+        dispatch_findings = [f for f in findings if f.pattern_id == "dispatch-input-injection"]
+        assert len(dispatch_findings) == 0
+
+
+class TestOutputDelimiterInjection:
+    def test_detects_hardcoded_delimiter(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/output-delimiter.yml")
+        delim_findings = [f for f in findings if f.pattern_id == "output-delimiter-injection"]
+        assert len(delim_findings) >= 1
+
+    def test_random_delimiter_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/output-random-delimiter.yml")
+        delim_findings = [f for f in findings if f.pattern_id == "output-delimiter-injection"]
+        assert len(delim_findings) == 0
+
+
+class TestOidcFork:
+    def test_detects_oidc_on_fork_reachable(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/oidc-fork.yml")
+        oidc_findings = [f for f in findings if f.pattern_id == "oidc-token-fork"]
+        assert len(oidc_findings) >= 1
+
+    def test_push_only_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/oidc-push-only.yml")
+        oidc_findings = [f for f in findings if f.pattern_id == "oidc-token-fork"]
+        assert len(oidc_findings) == 0
+
+
+class TestCachePoisoning:
+    def test_detects_restore_keys(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/cache-poisoning.yml")
+        cache_findings = [f for f in findings if f.pattern_id == "actions-cache-poisoning"]
+        assert len(cache_findings) >= 1
+
+    def test_exact_key_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/cache-exact-key.yml")
+        cache_findings = [f for f in findings if f.pattern_id == "actions-cache-poisoning"]
+        assert len(cache_findings) == 0
+
+
+class TestWorkflowRunArtifacts:
+    def test_detects_artifact_download(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/workflow-run-artifacts.yml")
+        art_findings = [f for f in findings if f.pattern_id == "workflow-run-artifact-trust"]
+        assert len(art_findings) >= 1
+
+    def test_no_download_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/workflow-run-no-artifacts.yml")
+        art_findings = [f for f in findings if f.pattern_id == "workflow-run-artifact-trust"]
+        assert len(art_findings) == 0
+
+
+class TestArtifactSupplyChain:
+    def test_detects_download_then_execute(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/workflow-run-artifacts.yml")
+        chain_findings = [f for f in findings if f.pattern_id == "artifact-supply-chain"]
+        assert len(chain_findings) >= 1
+
+    def test_no_download_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/workflow-run-no-artifacts.yml")
+        chain_findings = [f for f in findings if f.pattern_id == "artifact-supply-chain"]
+        assert len(chain_findings) == 0
+
+
 class TestNoFalsePositivesOnSafe:
     def test_env_indirection(self) -> None:
         findings = _scan("safe/.github/workflows/env-indirection.yml")
