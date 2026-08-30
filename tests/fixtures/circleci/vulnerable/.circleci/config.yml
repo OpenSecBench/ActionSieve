@@ -10,6 +10,11 @@ executors:
       image: ubuntu-2204:current
     resource_class: myorg/production-runner
 
+parameters:
+  deploy_target:
+    type: string
+    default: staging
+
 jobs:
   build:
     executor: runner
@@ -20,6 +25,9 @@ jobs:
           command: |
             echo "Deploying $CIRCLE_BRANCH"
             ./deploy.sh << pipeline.git.branch >>
+      - run:
+          name: Deploy target
+          command: ./deploy.sh << pipeline.parameters.deploy_target >>
 
   notify:
     docker:

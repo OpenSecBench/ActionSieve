@@ -53,6 +53,11 @@ class TestCircleCIScan:
         ids = [f["pattern_id"] for f in data["findings"]]
         assert "circleci-dynamic-config" in ids
 
+    def test_pipeline_param_injection_detected(self) -> None:
+        data = _scan(["scan", "--platform", "circleci", VULN])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "circleci-pipeline-param-injection" in ids
+
     def test_sarif_output(self) -> None:
         result = CliRunner().invoke(
             main,

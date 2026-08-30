@@ -40,10 +40,12 @@ patterns:
   - id: circleci-pipeline-param-injection
     title: Tainted pipeline parameter in shell command
     description: |
-      A CircleCI run step uses << pipeline.git.branch >> or
-      << pipeline.git.tag >> in a shell command. These values expand
-      before the shell executes. An attacker controlling the branch name
-      or tag can inject shell metacharacters.
+      A CircleCI run step uses << pipeline.git.branch >>,
+      << pipeline.git.tag >>, or << pipeline.parameters.X >> in a
+      shell command. These values expand at config compile time,
+      before the shell executes. An attacker controlling the branch
+      name, tag, or API-triggered parameter can inject shell
+      metacharacters.
     platforms: [circleci]
     trigger: [pull_request, push]
     trust_boundary: untrusted_user_input -> shell_execution
@@ -53,18 +55,21 @@ patterns:
     requires_self_hosted: false
     severity_notes: |
       Pipeline parameters expand at config processing time, before the
-      shell. Branch names with metacharacters can break out of quoted
-      contexts. Tags are less commonly attacker-controlled but still
-      untrusted.
+      shell. Branch names and string parameters with metacharacters can
+      break out of quoted contexts. Pipeline parameters can be set via
+      the CircleCI API when triggering a pipeline.
     detection:
       type: single_step
       in_block: run
       grep_patterns:
         - '<< pipeline.git.branch >>'
         - '<< pipeline.git.tag >>'
+        - '<< pipeline.parameters.'
+        - '<< parameters.'
     mitigations:
       - Pass pipeline values through environment variables instead
       - Use BASH_ENV or command substitution with proper quoting
+      - Use enum-type parameters instead of string where possible
     cwe: CWE-78
     tags: [injection, circleci, pipeline-parameter]
     status: active

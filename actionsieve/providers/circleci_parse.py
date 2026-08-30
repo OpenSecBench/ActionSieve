@@ -21,6 +21,8 @@ TAINTED_ENV_VARS = (
 TAINTED_PIPELINE_PARAMS = (
     "pipeline.git.branch",
     "pipeline.git.tag",
+    "pipeline.parameters.",
+    "parameters.",
 )
 
 

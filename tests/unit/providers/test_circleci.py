@@ -219,6 +219,51 @@ jobs:
         tainted = [e for e in step.expressions if e.is_tainted]
         assert len(tainted) >= 1
 
+    def test_pipeline_parameters_tainted(self, provider: CircleCIProvider, tmp_path: Path) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+version: 2.1
+parameters:
+  deploy_target:
+    type: string
+    default: staging
+jobs:
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: ./deploy.sh << pipeline.parameters.deploy_target >>
+""",
+        )
+        wf = provider.parse(p)
+        step = wf.jobs[0].steps[0]
+        tainted = [e for e in step.expressions if e.is_tainted]
+        assert len(tainted) == 1
+        assert tainted[0].context_path == "pipeline.parameters.deploy_target"
+
+    def test_job_parameters_tainted(self, provider: CircleCIProvider, tmp_path: Path) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+version: 2.1
+jobs:
+  deploy:
+    parameters:
+      target:
+        type: string
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: ./deploy.sh << parameters.target >>
+""",
+        )
+        wf = provider.parse(p)
+        step = wf.jobs[0].steps[0]
+        tainted = [e for e in step.expressions if e.is_tainted]
+        assert len(tainted) == 1
+        assert tainted[0].context_path == "parameters.target"
+
     def test_safe_command_no_tainted(self, provider: CircleCIProvider, tmp_path: Path) -> None:
         p = _write_config(
             tmp_path,
