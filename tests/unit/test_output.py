@@ -3,7 +3,7 @@ import json
 import yaml
 
 from actionsieve.engine import Finding
-from actionsieve.output import render_json, render_markdown, render_sarif, render_yaml
+from actionsieve.output import render_json, render_markdown, render_ocsf, render_sarif, render_yaml
 
 
 def _sample_finding() -> Finding:
@@ -179,3 +179,85 @@ class TestMarkdown:
         f.impact = ["rce", "secret_exfil"]
         text = render_markdown([f])
         assert "rce, secret_exfil" in text
+
+
+class TestOCSF:
+    def test_valid_json(self) -> None:
+        text = render_ocsf([_sample_finding()])
+        data = json.loads(text)
+        assert "detection_findings" in data
+        assert len(data["detection_findings"]) == 1
+
+    def test_class_uid(self) -> None:
+        text = render_ocsf([_sample_finding()])
+        data = json.loads(text)
+        event = data["detection_findings"][0]
+        assert event["class_uid"] == 2004
+        assert event["category_uid"] == 2
+        assert event["type_uid"] == 200401
+        assert event["activity_id"] == 1
+
+    def test_severity_mapping(self) -> None:
+        for severity, expected_id in [
+            ("critical", 5),
+            ("high", 4),
+            ("medium", 3),
+            ("low", 2),
+            ("info", 1),
+        ]:
+            f = _sample_finding()
+            f.severity_base = severity
+            text = render_ocsf([f])
+            data = json.loads(text)
+            assert data["detection_findings"][0]["severity_id"] == expected_id
+
+    def test_finding_info(self) -> None:
+        text = render_ocsf([_sample_finding()])
+        data = json.loads(text)
+        info = data["detection_findings"][0]["finding_info"]
+        assert info["title"] == "Expression injection in run block"
+        assert "expr-injection-run" in info["uid"]
+        assert info["analytic"]["uid"] == "expr-injection-run"
+        assert info["analytic"]["type_id"] == 1
+
+    def test_cwe_present(self) -> None:
+        text = render_ocsf([_sample_finding()])
+        data = json.loads(text)
+        cwe = data["detection_findings"][0]["finding_info"]["cwe"]
+        assert cwe["uid"] == "CWE-78"
+        assert "78" in cwe["src_url"]
+
+    def test_cwe_absent(self) -> None:
+        f = _sample_finding()
+        f.cwe = None
+        text = render_ocsf([f])
+        data = json.loads(text)
+        assert "cwe" not in data["detection_findings"][0]["finding_info"]
+
+    def test_metadata(self) -> None:
+        text = render_ocsf([_sample_finding()])
+        data = json.loads(text)
+        meta = data["detection_findings"][0]["metadata"]
+        assert meta["version"] == "1.4.0"
+        assert meta["product"]["name"] == "actionsieve"
+
+    def test_resources(self) -> None:
+        text = render_ocsf([_sample_finding()])
+        data = json.loads(text)
+        resources = data["detection_findings"][0]["resources"]
+        assert len(resources) == 1
+        assert resources[0]["name"] == ".github/workflows/ci.yml"
+
+    def test_empty_findings(self) -> None:
+        text = render_ocsf([])
+        data = json.loads(text)
+        assert data["detection_findings"] == []
+
+    def test_computed_severity_used(self) -> None:
+        f = _sample_finding()
+        f.severity_computed = "critical"
+        text = render_ocsf([f])
+        data = json.loads(text)
+        event = data["detection_findings"][0]
+        assert event["severity_id"] == 5
+        assert event["severity"] == "critical"

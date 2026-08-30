@@ -33,6 +33,8 @@ def render(
         text = render_sarif(findings)
     elif fmt == "markdown":
         text = render_markdown(findings)
+    elif fmt == "ocsf":
+        text = render_ocsf(findings)
     else:
         msg = f"Unknown format: {fmt}"
         raise ValueError(msg)
@@ -144,6 +146,59 @@ def render_markdown(findings: list[Finding]) -> str:
         findings=findings,
         grouped=grouped,
     )
+
+
+def render_ocsf(findings: list[Finding]) -> str:
+    now = datetime.now(UTC).isoformat()
+    metadata: dict[str, Any] = {
+        "version": "1.4.0",
+        "product": {"name": "actionsieve", "vendor_name": "actionsieve"},
+    }
+    events = [_ocsf_event(f, now, metadata) for f in findings]
+    return json.dumps({"detection_findings": events}, indent=2)
+
+
+def _ocsf_event(f: Finding, ts: str, metadata: dict[str, Any]) -> dict[str, Any]:
+    severity = f.severity_computed or f.severity_base
+    event: dict[str, Any] = {
+        "class_uid": 2004,
+        "category_uid": 2,
+        "activity_id": 1,
+        "type_uid": 200401,
+        "severity_id": _ocsf_severity(severity),
+        "severity": severity,
+        "status_id": 1,
+        "time": ts,
+        "message": f"{f.pattern_title} in {f.file_path}",
+        "metadata": metadata,
+        "finding_info": {
+            "uid": f"{f.pattern_id}:{f.file_path}:{f.job_id}:{f.step_index or 0}",
+            "title": f.pattern_title,
+            "desc": "; ".join(f.evidence),
+            "analytic": {
+                "uid": f.pattern_id,
+                "name": f.pattern_title,
+                "type_id": 1,
+                "type": "Rule",
+            },
+            "types": f.tags,
+            "data_sources": [f.file_path],
+        },
+        "resources": [{"name": f.file_path, "uid": f.file_path, "type": "CI/CD Pipeline"}],
+    }
+    if f.cwe:
+        event["finding_info"]["cwe"] = {
+            "uid": f.cwe,
+            "src_url": f"https://cwe.mitre.org/data/definitions/{f.cwe.split('-')[-1]}.html",
+        }
+    return event
+
+
+_OCSF_SEVERITY = {"info": 1, "low": 2, "medium": 3, "high": 4, "critical": 5}
+
+
+def _ocsf_severity(severity: str) -> int:
+    return _OCSF_SEVERITY.get(severity, 0)
 
 
 def _finding_dict(f: Finding) -> dict[str, Any]:

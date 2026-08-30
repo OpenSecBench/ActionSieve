@@ -52,6 +52,16 @@ class TestScanCommand:
         assert "# actionsieve Security Report" in result.output
         assert "expr-injection-run" in result.output
 
+    def test_scan_ocsf_format(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["scan", "--format", "ocsf", str(FIXTURES / "vulnerable")])
+        data = json.loads(result.output)
+        assert "detection_findings" in data
+        assert len(data["detection_findings"]) > 0
+        event = data["detection_findings"][0]
+        assert event["class_uid"] == 2004
+        assert "finding_info" in event
+
     def test_scan_markdown_output_file(self, tmp_path: Path) -> None:
         out = tmp_path / "report.md"
         runner = CliRunner()
