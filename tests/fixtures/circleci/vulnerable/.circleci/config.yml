@@ -1,0 +1,38 @@
+version: 2.1
+
+orbs:
+  slack: circleci/slack@4
+  custom: myorg/deploy@volatile
+
+executors:
+  runner:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: myorg/production-runner
+
+jobs:
+  build:
+    executor: runner
+    steps:
+      - checkout
+      - run:
+          name: Deploy branch
+          command: |
+            echo "Deploying $CIRCLE_BRANCH"
+            ./deploy.sh << pipeline.git.branch >>
+
+  notify:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: echo "Built by $CIRCLE_PR_USERNAME"
+      - slack/notify:
+          channel: deploys
+
+workflows:
+  main:
+    jobs:
+      - build
+      - notify:
+          requires:
+            - build

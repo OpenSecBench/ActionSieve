@@ -22,7 +22,7 @@ def main() -> None:
 @click.argument("path", type=click.Path(exists=True, path_type=Path))
 @click.option(
     "--platform",
-    type=click.Choice(["github", "gitlab", "azure", "jenkins"]),
+    type=click.Choice(["github", "gitlab", "azure", "jenkins", "circleci"]),
     help="Force platform (auto-detected by default).",
 )
 @click.option(
@@ -138,7 +138,7 @@ def scan(
 )
 @click.option(
     "--platform",
-    type=click.Choice(["github", "gitlab", "azure", "jenkins"]),
+    type=click.Choice(["github", "gitlab", "azure", "jenkins", "circleci"]),
     help="Force platform (auto-detected by default).",
 )
 @click.option(

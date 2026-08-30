@@ -1,0 +1,35 @@
+version: 2.1
+
+orbs:
+  node: circleci/node@5.2.0
+
+executors:
+  default:
+    docker:
+      - image: cimg/node:20.10
+
+jobs:
+  test:
+    executor: default
+    steps:
+      - checkout
+      - node/install-packages
+      - run:
+          name: Run tests
+          command: npm test
+      - store_test_results:
+          path: test-results
+
+  lint:
+    executor: default
+    steps:
+      - checkout
+      - run:
+          name: Lint
+          command: npm run lint
+
+workflows:
+  ci:
+    jobs:
+      - test
+      - lint
