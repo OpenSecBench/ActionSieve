@@ -26,6 +26,11 @@ class TestExpressionInjection:
         expr_findings = [f for f in findings if f.pattern_id == "expr-injection-run"]
         assert len(expr_findings) == 0
 
+    def test_run_block_does_not_trigger_github_script(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/expression-injection.yml")
+        script_findings = [f for f in findings if f.pattern_id == "expr-injection-github-script"]
+        assert len(script_findings) == 0
+
 
 class TestPwnRequest:
     def test_detects_prt_checkout_head(self) -> None:

@@ -138,7 +138,7 @@ def _get_block_text(step: Step, in_block: str) -> str | None:
     if in_block == "script":
         if step.type == "action" and step.action_ref and "github-script" in step.action_ref.name:
             return step.inputs.get("script")
-        return step.shell_command
+        return None
     if in_block == "with":
         return "\n".join(str(v) for v in step.inputs.values()) if step.inputs else None
     if in_block == "env":
