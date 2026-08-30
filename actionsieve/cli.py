@@ -19,6 +19,8 @@ PLATFORMS = [
     "bitbucket",
     "buildkite",
     "drone",
+    "codebuild",
+    "cloudbuild",
 ]
 FAIL_LEVELS = ["info", "low", "medium", "high", "critical"]
 

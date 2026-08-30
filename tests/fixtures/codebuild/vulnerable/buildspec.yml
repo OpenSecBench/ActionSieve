@@ -1,0 +1,28 @@
+version: 0.2
+
+env:
+  variables:
+    NODE_ENV: production
+  secrets-manager:
+    DEPLOY_KEY: prod/deploy-key:apiKey
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - npm ci
+
+  build:
+    commands:
+      - echo "Building ref $CODEBUILD_WEBHOOK_HEAD_REF"
+      - echo "Source version ${CODEBUILD_SOURCE_VERSION}"
+      - npm run build
+
+  post_build:
+    commands:
+      - echo "Deploying from $CODEBUILD_WEBHOOK_TRIGGER"
+
+artifacts:
+  files:
+    - dist/**/*

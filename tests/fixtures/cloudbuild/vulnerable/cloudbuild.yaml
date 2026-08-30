@@ -1,0 +1,31 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - build
+      - -t
+      - 'gcr.io/$PROJECT_ID/app:$BRANCH_NAME'
+      - .
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: bash
+    args:
+      - -c
+      - echo "Deploying tag $TAG_NAME"
+
+  - name: 'myorg/custom-builder'
+    script: |
+      echo "Building ${REPO_FULL_NAME}"
+      make build
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - push
+      - 'gcr.io/$PROJECT_ID/app:$BRANCH_NAME'
+
+images:
+  - 'gcr.io/$PROJECT_ID/app:$BRANCH_NAME'
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/myproject/secrets/deploy-key/versions/latest
+      env: DEPLOY_KEY

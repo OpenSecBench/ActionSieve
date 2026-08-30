@@ -1,0 +1,43 @@
+patterns:
+
+  - id: codebuild-env-injection
+    title: Tainted environment variable in build command
+    description: |
+      A CodeBuild buildspec command interpolates an attacker-controlled
+      environment variable ($CODEBUILD_WEBHOOK_HEAD_REF, $CODEBUILD_SOURCE_VERSION)
+      directly into a shell command. In webhook-triggered PR builds, branch names
+      and webhook metadata are attacker-controlled; shell metacharacters in the
+      value produce command injection.
+    platforms: [codebuild]
+    trigger: [webhook]
+    trust_boundary: untrusted_user_input -> shell_execution
+    attacker_model: fork_pr
+    impact: [rce]
+    severity_base: high
+    requires_self_hosted: false
+    severity_notes: |
+      CodeBuild runs on AWS-managed infrastructure with an IAM role attached.
+      Command injection gives the attacker the build role's permissions,
+      which may include access to secrets, S3 buckets, and other AWS resources.
+    detection:
+      type: single_step
+      in_block: run
+      grep_patterns:
+        - '$CODEBUILD_WEBHOOK_HEAD_REF'
+        - '${CODEBUILD_WEBHOOK_HEAD_REF}'
+        - '$CODEBUILD_WEBHOOK_TRIGGER'
+        - '${CODEBUILD_WEBHOOK_TRIGGER}'
+        - '$CODEBUILD_WEBHOOK_BASE_REF'
+        - '${CODEBUILD_WEBHOOK_BASE_REF}'
+        - '$CODEBUILD_SOURCE_VERSION'
+        - '${CODEBUILD_SOURCE_VERSION}'
+        - '$CODEBUILD_WEBHOOK_ACTOR_ACCOUNT_ID'
+        - '${CODEBUILD_WEBHOOK_ACTOR_ACCOUNT_ID}'
+    mitigations:
+      - Quote variables in shell commands
+      - Use environment variable indirection
+      - Restrict webhook event filters to trusted branches
+      - Use CodeBuild input transforms to sanitize webhook data
+    cwe: CWE-78
+    tags: [injection, codebuild, environment-variable]
+    status: active

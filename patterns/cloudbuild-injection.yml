@@ -1,0 +1,42 @@
+patterns:
+
+  - id: cloudbuild-substitution-injection
+    title: Tainted substitution variable in build step
+    description: |
+      A Cloud Build step interpolates an attacker-controlled substitution
+      variable ($BRANCH_NAME, $TAG_NAME) directly into a shell command or
+      script. In PR-triggered builds, branch and tag names are attacker-
+      controlled; shell metacharacters in the value produce command injection.
+    platforms: [cloudbuild]
+    trigger: [push, pull_request]
+    trust_boundary: untrusted_user_input -> shell_execution
+    attacker_model: fork_pr
+    impact: [rce]
+    severity_base: high
+    requires_self_hosted: false
+    severity_notes: |
+      Cloud Build steps run with the build's service account permissions.
+      Command injection gives the attacker access to GCP resources the
+      service account can reach (Container Registry, Secret Manager, GCS).
+    detection:
+      type: single_step
+      in_block: run
+      grep_patterns:
+        - '$BRANCH_NAME'
+        - '${BRANCH_NAME}'
+        - '$TAG_NAME'
+        - '${TAG_NAME}'
+        - '$REF_NAME'
+        - '${REF_NAME}'
+        - '$REPO_NAME'
+        - '${REPO_NAME}'
+        - '$REPO_FULL_NAME'
+        - '${REPO_FULL_NAME}'
+    mitigations:
+      - Quote substitution variables in shell commands
+      - Use Cloud Build substitution validation (allowedPattern)
+      - Restrict triggers to trusted branches only
+      - Use minimal-privilege service accounts
+    cwe: CWE-78
+    tags: [injection, cloudbuild, substitution-variable]
+    status: active

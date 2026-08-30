@@ -40,6 +40,8 @@ def _get_providers() -> list[Provider]:
     from actionsieve.providers.bitbucket import BitbucketProvider
     from actionsieve.providers.buildkite import BuildkiteProvider
     from actionsieve.providers.circleci import CircleCIProvider
+    from actionsieve.providers.cloudbuild import CloudBuildProvider
+    from actionsieve.providers.codebuild import CodeBuildProvider
     from actionsieve.providers.drone import DroneProvider
     from actionsieve.providers.github import GitHubProvider
     from actionsieve.providers.gitlab import GitLabProvider
@@ -52,6 +54,8 @@ def _get_providers() -> list[Provider]:
         BitbucketProvider(),
         BuildkiteProvider(),
         DroneProvider(),
+        CodeBuildProvider(),
+        CloudBuildProvider(),
     ]
     try:
         from actionsieve.providers.jenkins import JenkinsProvider
