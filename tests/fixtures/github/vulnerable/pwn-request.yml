@@ -1,0 +1,19 @@
+name: PR Check
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Run tests
+        run: npm test
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}

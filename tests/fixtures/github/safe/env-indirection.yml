@@ -1,0 +1,15 @@
+name: PR Greeting Safe
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  greet:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Greet PR author
+        run: |
+          echo "PR title: $PR_TITLE"
+          echo "Thanks for the PR!"
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}

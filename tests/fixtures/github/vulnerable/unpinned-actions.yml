@@ -1,0 +1,12 @@
+name: CI
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: some-org/some-action@main
+      - uses: another-org/risky-action@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
