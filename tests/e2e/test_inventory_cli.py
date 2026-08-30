@@ -109,6 +109,23 @@ class TestInventoryTrust:
                 assert comp["trust_score"] == "high"
 
 
+class TestInventoryOnlineFlag:
+    def test_online_offline_mutually_exclusive(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["inventory", "--online", "--offline", str(FIXTURES / "safe")],
+        )
+        assert result.exit_code != 0
+        assert "mutually exclusive" in result.output
+
+    def test_online_flag_in_help(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["inventory", "--help"])
+        assert "--online" in result.output
+        assert "--token" in result.output
+
+
 class TestCycloneDxFormat:
     def test_purl_format(self) -> None:
         runner = CliRunner()

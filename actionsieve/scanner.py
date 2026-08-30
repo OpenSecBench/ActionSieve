@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from actionsieve import engine
+from actionsieve.engine import Finding
 from actionsieve.model import ComponentRef, Expression, Step
 from actionsieve.output import render
 from actionsieve.patterns import load_patterns
@@ -26,7 +27,6 @@ from actionsieve.severity import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from actionsieve.engine import Finding
     from actionsieve.model import WorkflowModel
 
 EXIT_CLEAN = 0
@@ -56,6 +56,8 @@ def scan(
     show_suppressed: bool = False,
     diff_base: str | None = None,
     offline: bool = False,
+    online: bool = False,
+    token: str | None = None,
 ) -> ScanResult:
     providers = [get_provider(platform)] if platform else auto_detect(repo_path)
 
@@ -71,6 +73,7 @@ def scan(
     profile = load_profile(profile_name, repo_profile=repo_profile)
 
     all_findings: list[Finding] = []
+    models: list[WorkflowModel] = []
 
     for provider in providers:
         patterns = load_patterns(patterns_path, platform=provider.name)
@@ -92,6 +95,10 @@ def scan(
                 finding.severity_base = compute_static(finding, model)
 
             all_findings.extend(findings)
+            models.append(model)
+
+    if online:
+        all_findings.extend(_run_pin_checks(models, token))
 
     visible: list[Finding] = []
     suppressed: list[Finding] = []
@@ -281,3 +288,35 @@ def _compute_exit_code(findings: list[Finding], fail_on: str | None) -> int:
         return EXIT_FINDINGS
 
     return EXIT_CLEAN
+
+
+def _run_pin_checks(models: list[WorkflowModel], token: str | None) -> list[Finding]:
+    from actionsieve.api_client import DiskCache, GitHubAPI, resolve_token
+    from actionsieve.inventory import collect
+    from actionsieve.pins import verify_pins
+
+    resolved_token = resolve_token("github", token)
+    api = GitHubAPI(token=resolved_token, cache=DiskCache())
+    inv = collect(models)
+    results = verify_pins(inv.components, api)
+
+    pin_severity: dict[str, str] = {"wrong_repo": "medium", "outdated": "info"}
+    findings: list[Finding] = []
+    for r in results:
+        findings.append(
+            Finding(
+                pattern_id=f"pin-{r.status.replace('_', '-')}",
+                pattern_title=f"SHA pin: {r.status.replace('_', ' ')}",
+                file_path="",
+                platform="github",
+                line=0,
+                job_id="",
+                step_index=None,
+                severity_base=pin_severity.get(r.status, "info"),
+                attacker_model="action_maintainer_compromise",
+                impact="supply_chain",
+                evidence=[r.detail, f"ref: {r.ref}"],
+                tags=["supply-chain", "pinning", "online"],
+            )
+        )
+    return findings

@@ -92,6 +92,17 @@ def main() -> None:
     default=False,
     help="Skip network calls for ref resolution.",
 )
+@click.option(
+    "--online",
+    is_flag=True,
+    default=False,
+    help="Enable online checks (SHA pin verification).",
+)
+@click.option(
+    "--token",
+    type=str,
+    help="API token for online checks (also reads GITHUB_TOKEN env var).",
+)
 def scan(
     path: Path,
     platform: str | None,
@@ -104,8 +115,13 @@ def scan(
     show_suppressed: bool,
     diff_base: str | None,
     offline: bool,
+    online: bool,
+    token: str | None,
 ) -> None:
     """Scan a repo's CI/CD pipeline definitions for security issues."""
+    if online and offline:
+        raise click.UsageError("--online and --offline are mutually exclusive.")
+
     from actionsieve.scanner import scan as run_scan
 
     result = run_scan(
@@ -120,6 +136,8 @@ def scan(
         show_suppressed=show_suppressed,
         diff_base=diff_base,
         offline=offline,
+        online=online,
+        token=token,
     )
 
     if not output_file:
@@ -160,6 +178,17 @@ def scan(
     default=False,
     help="Skip network calls for ref resolution.",
 )
+@click.option(
+    "--online",
+    is_flag=True,
+    default=False,
+    help="Enable online checks (SHA pin verification).",
+)
+@click.option(
+    "--token",
+    type=str,
+    help="API token for online checks (also reads GITHUB_TOKEN env var).",
+)
 def inventory(
     path: Path,
     check: bool,
@@ -167,8 +196,13 @@ def inventory(
     output_file: Path | None,
     platform: str | None,
     offline: bool,
+    online: bool,
+    token: str | None,
 ) -> None:
     """Generate a bill of materials for CI/CD components."""
+    if online and offline:
+        raise click.UsageError("--online and --offline are mutually exclusive.")
+
     from actionsieve.inventory import run_inventory
     from actionsieve.output import render_inventory
 
@@ -177,6 +211,8 @@ def inventory(
         platform=platform,
         check=check,
         offline=offline,
+        online=online,
+        token=token,
     )
 
     text = render_inventory(inv, output_format, output_file)

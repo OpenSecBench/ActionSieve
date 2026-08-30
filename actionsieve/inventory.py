@@ -149,6 +149,8 @@ def run_inventory(
     platform: str | None = None,
     check: bool = False,
     offline: bool = False,
+    online: bool = False,
+    token: str | None = None,
 ) -> Inventory:
     from actionsieve.providers import ParseError, auto_detect, get_provider
 
@@ -170,8 +172,27 @@ def run_inventory(
 
         inv = check_advisories(inv)
 
+    if online:
+        _verify_online(inv, token)
+
     from actionsieve.trust import score_components
 
     score_components(inv)
 
     return inv
+
+
+def _verify_online(inv: Inventory, token: str | None) -> None:
+    from actionsieve.api_client import DiskCache, GitHubAPI, resolve_token
+    from actionsieve.pins import verify_pins
+
+    resolved = resolve_token("github", token)
+    api = GitHubAPI(token=resolved, cache=DiskCache())
+    results = verify_pins(inv.components, api)
+
+    status_map = {r.component_key: r for r in results}
+    for comp in inv.components:
+        key = f"{comp.owner}/{comp.name}@{comp.ref[:12]}"
+        pin_result = status_map.get(key)
+        if pin_result:
+            comp.risk_factors.append(f"pin:{pin_result.status} — {pin_result.detail}")

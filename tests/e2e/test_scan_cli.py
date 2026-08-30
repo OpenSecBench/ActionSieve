@@ -506,6 +506,31 @@ class TestProfileResolve:
         assert result.exit_code != 0
 
 
+class TestOnlineFlag:
+    def test_online_offline_mutually_exclusive(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--online", "--offline", str(FIXTURES / "safe")],
+        )
+        assert result.exit_code != 0
+        assert "mutually exclusive" in result.output
+
+    def test_online_flag_accepted(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["scan", "--help"])
+        assert "--online" in result.output
+        assert "--token" in result.output
+
+    def test_offline_flag_accepted(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--offline", str(FIXTURES / "safe")],
+        )
+        assert result.exit_code == 0
+
+
 class TestVersionFlag:
     def test_version(self) -> None:
         runner = CliRunner()
