@@ -215,7 +215,7 @@ def _detect_repo(repo_path: Path) -> str | None:
     import subprocess
 
     try:
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             ["git", "remote", "get-url", "origin"],  # noqa: S607
             capture_output=True,
             text=True,
