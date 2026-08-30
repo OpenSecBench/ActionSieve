@@ -1,0 +1,42 @@
+patterns:
+
+  - id: pipe-to-shell
+    title: Remote script piped directly to shell
+    description: |
+      A CI step downloads and executes a remote script in one
+      command (curl | bash, wget | sh, etc.). The script content
+      is not verified before execution — a compromised server or
+      MITM attack delivers arbitrary code. No pinning, no checksum,
+      no review.
+    platforms: "all"
+    trigger: [any]
+    trust_boundary: remote_server -> shell_execution
+    attacker_model: any
+    impact: [rce, secret_exfil]
+    severity_base: medium
+    requires_self_hosted: false
+    severity_notes: |
+      Common in setup steps (install tools, configure environments).
+      Risk depends on the source — a first-party CDN over HTTPS is
+      lower risk than an arbitrary URL. Still, the content can change
+      between runs with no audit trail.
+    detection:
+      type: single_step
+      in_block: run
+      grep_patterns:
+        - '| bash'
+        - '| /bin/bash'
+        - '| /bin/sh'
+        - '| sh -'
+        - 'base64 -d | sh'
+        - 'base64 --decode | sh'
+        - 'base64 -d | bash'
+        - 'base64 --decode | bash'
+    mitigations:
+      - Download the script to a file, verify its checksum, then execute
+      - Pin installation scripts by version or commit SHA
+      - Use package managers instead of piped shell scripts
+      - Vendor install scripts in the repository
+    cwe: CWE-829
+    tags: [injection, remote-code, pipe-to-shell, supply-chain]
+    status: active

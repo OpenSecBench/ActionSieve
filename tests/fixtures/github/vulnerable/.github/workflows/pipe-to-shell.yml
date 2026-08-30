@@ -1,0 +1,12 @@
+name: Install tools
+on: push
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install rustup
+        run: curl -sSL https://sh.rustup.rs | sh -s -- -y
+      - name: Install another tool
+        run: |
+          wget -O- https://example.com/install.sh | bash

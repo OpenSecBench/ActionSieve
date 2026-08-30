@@ -224,6 +224,28 @@ class TestHardeningFindings:
         assert len(hardening) == 0
 
 
+class TestPipeToShellFindings:
+    def test_pipe_to_shell_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "pipe-to-shell" in ids
+
+    def test_safe_download_not_flagged(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "safe")],
+        )
+        data = json.loads(result.output)
+        pipe_findings = [f for f in data["findings"] if f["pattern_id"] == "pipe-to-shell"]
+        assert len(pipe_findings) == 0
+
+
 class TestTrustRepoProfile:
     def _make_repo(self, tmp_path: Path) -> Path:
         wf_dir = tmp_path / ".github" / "workflows"

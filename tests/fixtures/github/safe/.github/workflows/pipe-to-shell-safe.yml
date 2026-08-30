@@ -1,0 +1,18 @@
+name: Install tools safely
+on: push
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - name: Install rustup
+        run: |
+          curl -sSL -o rustup-init.sh https://sh.rustup.rs
+          sha256sum -c <<< "expected_hash  rustup-init.sh"
+          sh rustup-init.sh -y

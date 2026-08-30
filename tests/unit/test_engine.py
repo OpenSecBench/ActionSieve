@@ -219,6 +219,19 @@ class TestCheckoutPersistsCredentials:
         assert len(cred_findings) == 0
 
 
+class TestPipeToShell:
+    def test_detects_curl_pipe_sh(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/pipe-to-shell.yml")
+        pipe_findings = [f for f in findings if f.pattern_id == "pipe-to-shell"]
+        assert len(pipe_findings) >= 2
+        assert pipe_findings[0].severity_base == "medium"
+
+    def test_safe_download_then_verify_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/pipe-to-shell-safe.yml")
+        pipe_findings = [f for f in findings if f.pattern_id == "pipe-to-shell"]
+        assert len(pipe_findings) == 0
+
+
 class TestNoFalsePositivesOnSafe:
     def test_env_indirection(self) -> None:
         findings = _scan("safe/.github/workflows/env-indirection.yml")
