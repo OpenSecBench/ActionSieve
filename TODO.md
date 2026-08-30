@@ -120,15 +120,15 @@
 
 ## Phase 3: Chain detection
 
-- [ ] `chains.py` — cross-step data flow (GITHUB_OUTPUT → expression interpolation)
+- [x] `chains.py` — cross-step data flow (GITHUB_OUTPUT → expression interpolation)
 - [ ] `chains.py` — cross-job data flow (job outputs → needs → expression)
-- [ ] `chains.py` — checkout ref analysis (what code is checked out, fork-controlled?)
-- [ ] `chains.py` — taint propagation through env vars
-- [ ] `chains.py` — GITHUB_ENV injection detection
-- [ ] `engine.py` — cross_step and cross_job pattern matching using chain analysis
-- [ ] Vulnerable fixtures: multi-step chains (readdirSync→output→matrix→shell)
-- [ ] Safe fixtures: chains broken by env var indirection
-- [ ] Unit tests for chain tracing
+- [x] `chains.py` — checkout ref analysis (what code is checked out, fork-controlled?)
+- [x] `chains.py` — taint propagation through env vars
+- [x] `chains.py` — GITHUB_ENV injection detection
+- [x] `engine.py` — cross_step and cross_job pattern matching using chain analysis
+- [x] Vulnerable fixtures: multi-step chains (readdirSync→output→matrix→shell)
+- [x] Safe fixtures: chains broken by env var indirection
+- [x] Unit tests for chain tracing
 - [ ] E2E tests for chain detection findings
 
 ## Phase 4: GitLab CI + Azure Pipelines
