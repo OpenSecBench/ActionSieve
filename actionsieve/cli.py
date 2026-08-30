@@ -86,8 +86,25 @@ def scan(
     offline: bool,
 ) -> None:
     """Scan a repo's CI/CD pipeline definitions for security issues."""
-    # TODO: Wire to scanner.scan() once scanner module exists
-    raise click.ClickException("scan command not yet implemented — see TODO.md Phase 1")
+    from actionsieve.scanner import scan as run_scan
+
+    result = run_scan(
+        repo_path=path,
+        platform=platform,
+        output_format=output_format,
+        output_file=output_file,
+        patterns_path=patterns,
+        profile_name=profile,
+        fail_on=fail_on,
+        show_suppressed=show_suppressed,
+        diff_base=diff_base,
+        offline=offline,
+    )
+
+    if not output_file:
+        click.echo(result.output_text)
+
+    raise SystemExit(result.exit_code)
 
 
 @main.command()

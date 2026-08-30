@@ -34,11 +34,10 @@ class TestCLI:
         assert "--check" in result.output
         assert "--platform" in result.output
 
-    def test_scan_not_yet_implemented(self, tmp_path: object) -> None:
+    def test_scan_runs_on_cwd(self) -> None:
         runner = CliRunner()
         result = runner.invoke(main, ["scan", "."])
-        assert result.exit_code != 0
-        assert "not yet implemented" in result.output
+        assert result.exit_code == 0
 
     def test_inventory_not_yet_implemented(self) -> None:
         runner = CliRunner()

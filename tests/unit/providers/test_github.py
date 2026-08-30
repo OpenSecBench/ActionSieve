@@ -6,6 +6,8 @@ from actionsieve.providers import ParseError, auto_detect, get_provider
 from actionsieve.providers.github import GitHubProvider
 
 FIXTURES = Path(__file__).parent.parent.parent / "fixtures" / "github"
+VULN = FIXTURES / "vulnerable" / ".github" / "workflows"
+SAFE = FIXTURES / "safe" / ".github" / "workflows"
 
 
 @pytest.fixture
@@ -59,7 +61,7 @@ class TestFindFiles:
 
 class TestParseExpressionInjection:
     def test_parses_vulnerable_workflow(self, provider: GitHubProvider) -> None:
-        wf = provider.parse(FIXTURES / "vulnerable" / "expression-injection.yml")
+        wf = provider.parse(VULN / "expression-injection.yml")
         assert wf.platform == "github"
         assert len(wf.triggers) == 1
         assert wf.triggers[0].event == "pull_request"
@@ -80,7 +82,7 @@ class TestParseExpressionInjection:
         assert any("pull_request.title" in e.context_path for e in tainted)
 
     def test_safe_env_indirection(self, provider: GitHubProvider) -> None:
-        wf = provider.parse(FIXTURES / "safe" / "env-indirection.yml")
+        wf = provider.parse(SAFE / "env-indirection.yml")
         step = wf.jobs[0].steps[0]
 
         shell_tainted = [e for e in step.expressions if e.is_tainted and e.is_in_shell]
@@ -89,7 +91,7 @@ class TestParseExpressionInjection:
 
 class TestParsePwnRequest:
     def test_parses_privileged_trigger(self, provider: GitHubProvider) -> None:
-        wf = provider.parse(FIXTURES / "vulnerable" / "pwn-request.yml")
+        wf = provider.parse(VULN / "pwn-request.yml")
         trigger = wf.triggers[0]
         assert trigger.raw_event == "pull_request_target"
         assert trigger.event == "pull_request"
@@ -97,12 +99,12 @@ class TestParsePwnRequest:
         assert trigger.is_fork_reachable is True
 
     def test_permissions_parsed(self, provider: GitHubProvider) -> None:
-        wf = provider.parse(FIXTURES / "vulnerable" / "pwn-request.yml")
+        wf = provider.parse(VULN / "pwn-request.yml")
         assert wf.permissions is not None
         assert wf.permissions.contents == "write"
 
     def test_checkout_head_ref(self, provider: GitHubProvider) -> None:
-        wf = provider.parse(FIXTURES / "vulnerable" / "pwn-request.yml")
+        wf = provider.parse(VULN / "pwn-request.yml")
         checkout_step = wf.jobs[0].steps[0]
         assert checkout_step.type == "action"
         assert checkout_step.action_ref is not None
@@ -110,14 +112,14 @@ class TestParsePwnRequest:
         assert "head.sha" in checkout_step.inputs.get("ref", "")
 
     def test_secrets_detected(self, provider: GitHubProvider) -> None:
-        wf = provider.parse(FIXTURES / "vulnerable" / "pwn-request.yml")
+        wf = provider.parse(VULN / "pwn-request.yml")
         job = wf.jobs[0]
         assert "DEPLOY_TOKEN" in job.secrets_referenced
 
 
 class TestParseUnpinnedActions:
     def test_pinned_vs_unpinned(self, provider: GitHubProvider) -> None:
-        wf = provider.parse(FIXTURES / "vulnerable" / "unpinned-actions.yml")
+        wf = provider.parse(VULN / "unpinned-actions.yml")
         steps = wf.jobs[0].steps
         refs = [s.action_ref for s in steps if s.action_ref is not None]
 
@@ -133,7 +135,7 @@ class TestParseUnpinnedActions:
         assert branch_ref.is_pinned is False
 
     def test_pinned_sha_actions(self, provider: GitHubProvider) -> None:
-        wf = provider.parse(FIXTURES / "safe" / "pinned-actions.yml")
+        wf = provider.parse(SAFE / "pinned-actions.yml")
         steps = wf.jobs[0].steps
         refs = [s.action_ref for s in steps if s.action_ref is not None]
         assert all(r.is_pinned for r in refs)
@@ -142,7 +144,7 @@ class TestParseUnpinnedActions:
 
 class TestParseSelfHosted:
     def test_self_hosted_runner(self, provider: GitHubProvider) -> None:
-        wf = provider.parse(FIXTURES / "vulnerable" / "self-hosted-secrets.yml")
+        wf = provider.parse(VULN / "self-hosted-secrets.yml")
         job = wf.jobs[0]
         assert job.runner.is_self_hosted is True
         assert job.runner.is_managed is False

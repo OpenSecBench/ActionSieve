@@ -1,0 +1,140 @@
+import json
+from pathlib import Path
+
+import yaml
+from click.testing import CliRunner
+
+from actionsieve.cli import main
+
+FIXTURES = Path(__file__).parent.parent / "fixtures" / "github"
+
+
+class TestScanCommand:
+    def test_scan_vulnerable_finds_issues(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["scan", str(FIXTURES / "vulnerable")])
+        assert result.exit_code != 0
+        data = json.loads(result.output)
+        assert len(data["findings"]) > 0
+
+    def test_scan_safe_clean(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["scan", str(FIXTURES / "safe")])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["findings"] == []
+
+    def test_scan_json_format(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["scan", "--format", "json", str(FIXTURES / "vulnerable")])
+        data = json.loads(result.output)
+        assert "findings" in data
+
+    def test_scan_yaml_format(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["scan", "--format", "yaml", str(FIXTURES / "vulnerable")])
+        data = yaml.safe_load(result.output)
+        assert "findings" in data
+
+    def test_scan_sarif_format(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["scan", "--format", "sarif", str(FIXTURES / "vulnerable")])
+        data = json.loads(result.output)
+        assert data["version"] == "2.1.0"
+        assert len(data["runs"][0]["results"]) > 0
+
+    def test_scan_platform_github(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main, ["scan", "--platform", "github", str(FIXTURES / "vulnerable")]
+        )
+        data = json.loads(result.output)
+        assert len(data["findings"]) > 0
+
+    def test_scan_output_file(self, tmp_path: Path) -> None:
+        out = tmp_path / "output.json"
+        runner = CliRunner()
+        runner.invoke(
+            main,
+            ["scan", "--output", str(out), str(FIXTURES / "vulnerable")],
+        )
+        assert out.exists()
+        data = json.loads(out.read_text())
+        assert len(data["findings"]) > 0
+
+    def test_scan_with_profile(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--profile", "hardened", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        assert "findings" in data
+
+    def test_scan_fail_on_info(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--fail-on", "info", str(FIXTURES / "vulnerable")],
+        )
+        assert result.exit_code != 0
+
+    def test_scan_show_suppressed(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "scan",
+                "--profile",
+                "hardened",
+                "--show-suppressed",
+                str(FIXTURES / "vulnerable"),
+            ],
+        )
+        data = json.loads(result.output)
+        assert "findings" in data
+
+    def test_scan_empty_dir_clean(self, tmp_path: Path) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["scan", str(tmp_path)])
+        assert result.exit_code == 0
+
+
+class TestScanFindings:
+    def test_expression_injection_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "expr-injection-run" in ids
+
+    def test_unpinned_refs_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "mutable-action-ref" in ids
+
+    def test_sarif_has_cwe(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--format", "sarif", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        results_with_cwe = [r for r in data["runs"][0]["results"] if "taxa" in r]
+        assert len(results_with_cwe) > 0
+
+
+class TestVersionFlag:
+    def test_version(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["--version"])
+        assert result.exit_code == 0
+        assert "actionsieve" in result.output
