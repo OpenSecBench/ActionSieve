@@ -396,6 +396,42 @@ steps:
         tainted = [e for e in wf.jobs[0].steps[0].expressions if e.is_tainted]
         assert len(tainted) == 1
 
+    def test_tainted_commit_author(self, provider: DroneProvider, tmp_path: Path) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+kind: pipeline
+name: build
+steps:
+  - name: notify
+    image: alpine
+    commands:
+      - echo $DRONE_COMMIT_AUTHOR
+""",
+        )
+        wf = provider.parse(p)
+        tainted = [e for e in wf.jobs[0].steps[0].expressions if e.is_tainted]
+        assert len(tainted) == 1
+        assert tainted[0].context_path == "DRONE_COMMIT_AUTHOR"
+
+    def test_tainted_target_branch(self, provider: DroneProvider, tmp_path: Path) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+kind: pipeline
+name: build
+steps:
+  - name: test
+    image: alpine
+    commands:
+      - echo ${DRONE_TARGET_BRANCH}
+""",
+        )
+        wf = provider.parse(p)
+        tainted = [e for e in wf.jobs[0].steps[0].expressions if e.is_tainted]
+        assert len(tainted) == 1
+        assert tainted[0].context_path == "DRONE_TARGET_BRANCH"
+
     def test_safe_command(self, provider: DroneProvider, tmp_path: Path) -> None:
         p = _write_config(
             tmp_path,

@@ -7,13 +7,33 @@ trigger:
     - push
     - pull_request
 
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+
 steps:
   - name: test
     image: node:20
     commands:
       - echo "Building branch $DRONE_BRANCH"
       - echo "${DRONE_COMMIT_MESSAGE}"
+      - echo $DRONE_COMMIT_AUTHOR
       - npm test
+
+  - name: privileged-build
+    image: alpine
+    privileged: true
+    commands:
+      - make build
+
+  - name: docker-step
+    image: node:20
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    commands:
+      - npm run build
 
   - name: deploy
     image: plugins/docker

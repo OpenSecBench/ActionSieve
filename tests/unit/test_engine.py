@@ -346,6 +346,39 @@ class TestDockerPluginPrivileged:
         assert any("socket" in e for f in plugin_findings for e in f.evidence)
 
 
+class TestDronePrivilegedStep:
+    def test_detects_privileged_step(self) -> None:
+        from actionsieve.providers.drone import DroneProvider
+
+        provider = DroneProvider()
+        model = provider.parse(FIXTURES.parent / "drone" / "vulnerable" / ".drone.yml")
+        patterns = load_patterns(platform="drone")
+        findings = match(model, patterns)
+        priv = [f for f in findings if f.pattern_id == "docker-plugin-privileged"]
+        assert len(priv) >= 1
+        assert any("privileged" in e for f in priv for e in f.evidence)
+
+    def test_detects_host_volume_socket(self) -> None:
+        from actionsieve.providers.drone import DroneProvider
+
+        provider = DroneProvider()
+        model = provider.parse(FIXTURES.parent / "drone" / "vulnerable" / ".drone.yml")
+        patterns = load_patterns(platform="drone")
+        findings = match(model, patterns)
+        priv = [f for f in findings if f.pattern_id == "docker-plugin-privileged"]
+        assert any("socket" in e for f in priv for e in f.evidence)
+
+    def test_safe_drone_no_privileged(self) -> None:
+        from actionsieve.providers.drone import DroneProvider
+
+        provider = DroneProvider()
+        model = provider.parse(FIXTURES.parent / "drone" / "safe" / ".drone.yml")
+        patterns = load_patterns(platform="drone")
+        findings = match(model, patterns)
+        priv = [f for f in findings if f.pattern_id == "docker-plugin-privileged"]
+        assert len(priv) == 0
+
+
 class TestIssueCommentForkCheckout:
     def test_detects_issue_comment_with_fork_checkout(self) -> None:
         findings = _scan("vulnerable/.github/workflows/issue-comment-checkout.yml")

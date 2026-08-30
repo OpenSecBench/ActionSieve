@@ -37,6 +37,12 @@ TAINTED_ENV_VARS = (
     "${DRONE_PULL_REQUEST_TITLE}",
     "$DRONE_SOURCE_BRANCH",
     "${DRONE_SOURCE_BRANCH}",
+    "$DRONE_COMMIT_AUTHOR",
+    "${DRONE_COMMIT_AUTHOR}",
+    "$DRONE_COMMIT_AUTHOR_NAME",
+    "${DRONE_COMMIT_AUTHOR_NAME}",
+    "$DRONE_TARGET_BRANCH",
+    "${DRONE_TARGET_BRANCH}",
 )
 
 
@@ -111,6 +117,9 @@ class DroneProvider:
                 "DRONE_TAG",
                 "DRONE_PULL_REQUEST_TITLE",
                 "DRONE_SOURCE_BRANCH",
+                "DRONE_COMMIT_AUTHOR",
+                "DRONE_COMMIT_AUTHOR_NAME",
+                "DRONE_TARGET_BRANCH",
             ],
             safe_indirection=[],
         )
@@ -192,16 +201,19 @@ def _parse_pipeline(doc: dict[str, Any], index: int, lines: list[str]) -> Job | 
 
 def _parse_step(data: dict[str, Any], offset: int, lines: list[str]) -> list[Step]:
     step_name = str(data["name"]) if "name" in data else None
+    is_privileged = data.get("privileged") is True
 
     commands = data.get("commands", [])
     if isinstance(commands, list) and commands:
         str_cmds = [str(c) for c in commands if isinstance(c, str)]
+        inputs = {"privileged": "true"} if is_privileged else {}
         return [
             Step(
                 index=offset + i,
                 type="shell",
                 name=step_name,
                 shell_command=cmd,
+                inputs=inputs,
                 expressions=_extract_expressions(cmd, lines),
             )
             for i, cmd in enumerate(str_cmds)
@@ -210,10 +222,12 @@ def _parse_step(data: dict[str, Any], offset: int, lines: list[str]) -> list[Ste
     image = data.get("image")
     if isinstance(image, str):
         ref = _parse_image_ref(image, lines)
-        inputs: dict[str, str] = {}
+        inputs = {}
         settings = data.get("settings", {})
         if isinstance(settings, dict):
             inputs = {str(k): str(v) for k, v in settings.items()}
+        if is_privileged:
+            inputs["privileged"] = "true"
         return [
             Step(
                 index=offset,

@@ -394,20 +394,33 @@ def _match_docker_plugin_privileged(
     model: WorkflowModel, pattern: dict[str, Any], make_finding: MakeFinding
 ) -> list[Finding]:
     findings: list[Finding] = []
+
+    host_volumes = _drone_host_volume_paths(model) if model.platform == "drone" else set()
+
     for job in model.jobs:
         for step in job.steps:
-            if step.type != "action" or not step.action_ref:
-                continue
-            name = step.action_ref.name.lower()
-            if "docker" not in name:
-                continue
             evidence: list[str] = []
-            if step.inputs.get("privileged", "").lower() == "true":
-                evidence.append("Docker plugin with privileged: true")
-            volumes = step.inputs.get("volumes", "")
-            if "/var/run/docker.sock" in volumes:
-                evidence.append("Docker plugin mounts docker socket")
+
+            if model.platform == "drone":
+                if step.inputs.get("privileged", "").lower() == "true":
+                    evidence.append("Step runs with privileged: true")
+            elif step.type == "action" and step.action_ref:
+                name = step.action_ref.name.lower()
+                if "docker" not in name:
+                    continue
+                if step.inputs.get("privileged", "").lower() == "true":
+                    evidence.append("Docker plugin with privileged: true")
+                volumes = step.inputs.get("volumes", "")
+                if "/var/run/docker.sock" in volumes:
+                    evidence.append("Docker plugin mounts docker socket")
+
+            if not evidence and host_volumes:
+                step_vols = _drone_step_volume_names(step, model)
+                if step_vols & host_volumes:
+                    evidence.append("Step mounts host docker socket via volume")
+
             if evidence:
+                line = step.action_ref.line if step.action_ref else 0
                 findings.append(
                     make_finding(
                         pattern=pattern,
@@ -415,10 +428,41 @@ def _match_docker_plugin_privileged(
                         job=job,
                         step=step,
                         evidence=evidence,
-                        line=step.action_ref.line,
+                        line=line,
                     )
                 )
     return findings
+
+
+def _drone_host_volume_paths(model: WorkflowModel) -> set[str]:
+    volumes = model.raw.get("volumes", [])
+    if not isinstance(volumes, list):
+        return set()
+    names: set[str] = set()
+    for vol in volumes:
+        if not isinstance(vol, dict):
+            continue
+        host = vol.get("host", {})
+        if isinstance(host, dict):
+            path = host.get("path", "")
+            if "/var/run/docker.sock" in str(path) or "/var/run/containerd" in str(path):
+                names.add(str(vol.get("name", "")))
+    return names
+
+
+def _drone_step_volume_names(step: Step, model: WorkflowModel) -> set[str]:
+    raw_steps = model.raw.get("steps", [])
+    if not isinstance(raw_steps, list):
+        return set()
+    for raw_step in raw_steps:
+        if not isinstance(raw_step, dict):
+            continue
+        if raw_step.get("name") != step.name:
+            continue
+        vols = raw_step.get("volumes", [])
+        if isinstance(vols, list):
+            return {str(v.get("name", "")) for v in vols if isinstance(v, dict)}
+    return set()
 
 
 _FORK_CHECKOUT_MARKERS = (

@@ -47,7 +47,7 @@ patterns:
       privileged: true or mounts the Docker socket via volumes.
       Both grant the container full host access — equivalent to
       running as root on the host machine.
-    platforms: [buildkite]
+    platforms: [buildkite, drone]
     trigger: [any]
     trust_boundary: ci_step -> host_docker_daemon
     attacker_model: contributor

@@ -42,6 +42,16 @@ class TestDroneScan:
         ids = [f["pattern_id"] for f in data["findings"]]
         assert "mutable-action-ref" in ids
 
+    def test_privileged_step_detected(self) -> None:
+        data = _scan(["scan", "--platform", "drone", VULN])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "docker-plugin-privileged" in ids
+
+    def test_commit_author_injection_detected(self) -> None:
+        data = _scan(["scan", "--platform", "drone", VULN])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "drone-env-injection" in ids
+
     def test_sarif_output(self) -> None:
         result = CliRunner().invoke(
             main,

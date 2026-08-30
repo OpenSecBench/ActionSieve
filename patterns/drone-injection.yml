@@ -33,6 +33,12 @@ patterns:
         - '${DRONE_PULL_REQUEST_TITLE}'
         - '$DRONE_SOURCE_BRANCH'
         - '${DRONE_SOURCE_BRANCH}'
+        - '$DRONE_COMMIT_AUTHOR'
+        - '${DRONE_COMMIT_AUTHOR}'
+        - '$DRONE_COMMIT_AUTHOR_NAME'
+        - '${DRONE_COMMIT_AUTHOR_NAME}'
+        - '$DRONE_TARGET_BRANCH'
+        - '${DRONE_TARGET_BRANCH}'
     mitigations:
       - Quote variables in shell commands
       - Use environment variable indirection
