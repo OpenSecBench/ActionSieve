@@ -1,0 +1,15 @@
+pipeline {
+    agent { label 'linux' }
+    stages {
+        stage('Build') {
+            steps {
+                sh 'echo safe step'
+                script {
+                    def branch = env.BRANCH_NAME
+                    sh "deploy --branch ${env.BRANCH_NAME}"
+                    sh "echo title: ${env.CHANGE_TITLE}"
+                }
+            }
+        }
+    }
+}

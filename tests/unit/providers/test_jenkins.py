@@ -441,10 +441,17 @@ pipeline {
 
 
 class TestEdgeCases:
-    def test_no_pipeline_block(self, provider: JenkinsProvider, tmp_path: Path) -> None:
+    def test_scripted_pipeline_parses(self, provider: JenkinsProvider, tmp_path: Path) -> None:
         p = _write_jenkinsfile(tmp_path, "node { sh 'echo hi' }")
-        with pytest.raises(ParseError, match="No pipeline block"):
-            provider.parse(p)
+        wf = provider.parse(p)
+        assert wf.platform == "jenkins"
+        assert len(wf.jobs) == 1
+        assert wf.jobs[0].steps[0].shell_command == "echo hi"
+
+    def test_empty_file_no_crash(self, provider: JenkinsProvider, tmp_path: Path) -> None:
+        p = _write_jenkinsfile(tmp_path, "// empty")
+        wf = provider.parse(p)
+        assert wf.jobs == []
 
     def test_file_size_limit(self, provider: JenkinsProvider, tmp_path: Path) -> None:
         p = _write_jenkinsfile(tmp_path, "x" * (1_048_577))
@@ -455,3 +462,151 @@ class TestEdgeCases:
         syntax = provider.expression_syntax()
         assert syntax.delimiters == ("${", "}")
         assert "params" in syntax.context_roots
+
+
+class TestScriptedPipeline:
+    def test_scripted_with_stages(self, provider: JenkinsProvider, tmp_path: Path) -> None:
+        p = _write_jenkinsfile(
+            tmp_path,
+            """\
+node('linux') {
+    stage('Build') {
+        sh 'make build'
+    }
+    stage('Test') {
+        sh 'make test'
+    }
+}
+""",
+        )
+        wf = provider.parse(p)
+        assert len(wf.jobs) == 2
+        assert wf.jobs[0].id == "Build"
+        assert wf.jobs[1].id == "Test"
+        assert wf.jobs[0].steps[0].shell_command == "make build"
+
+    def test_scripted_agent_label(self, provider: JenkinsProvider, tmp_path: Path) -> None:
+        p = _write_jenkinsfile(tmp_path, "node('my-agent') { sh 'echo hi' }")
+        wf = provider.parse(p)
+        assert wf.jobs[0].runner.is_self_hosted is True
+        assert "my-agent" in wf.jobs[0].runner.labels
+
+    def test_scripted_no_stages(self, provider: JenkinsProvider, tmp_path: Path) -> None:
+        p = _write_jenkinsfile(
+            tmp_path,
+            """\
+node {
+    sh 'echo hello'
+    sh "deploy ${params.TARGET}"
+}
+""",
+        )
+        wf = provider.parse(p)
+        assert len(wf.jobs) == 1
+        assert wf.jobs[0].id == "pipeline"
+        assert len(wf.jobs[0].steps) == 2
+
+    def test_scripted_tainted_expression(self, provider: JenkinsProvider, tmp_path: Path) -> None:
+        p = _write_jenkinsfile(
+            tmp_path,
+            """\
+node {
+    stage('Deploy') {
+        sh "deploy ${params.TARGET}"
+    }
+}
+""",
+        )
+        wf = provider.parse(p)
+        step = wf.jobs[0].steps[0]
+        tainted = [e for e in step.expressions if e.is_tainted]
+        assert len(tainted) >= 1
+        assert tainted[0].context_path == "params.TARGET"
+
+    def test_scripted_credentials(self, provider: JenkinsProvider, tmp_path: Path) -> None:
+        p = _write_jenkinsfile(
+            tmp_path,
+            """\
+node {
+    stage('Deploy') {
+        withCredentials([string(credentialsId: 'my-token', variable: 'T')]) {
+            sh 'deploy --token $T'
+        }
+    }
+}
+""",
+        )
+        wf = provider.parse(p)
+        assert "my-token" in wf.jobs[0].secrets_referenced
+
+
+class TestScriptBlock:
+    def test_script_block_shell_detected(self, provider: JenkinsProvider, tmp_path: Path) -> None:
+        p = _write_jenkinsfile(
+            tmp_path,
+            """\
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                sh 'echo basic'
+                script {
+                    sh "deploy ${params.TARGET}"
+                }
+            }
+        }
+    }
+}
+""",
+        )
+        wf = provider.parse(p)
+        steps = wf.jobs[0].steps
+        shell_steps = [s for s in steps if s.type == "shell"]
+        assert len(shell_steps) == 2
+        assert shell_steps[0].shell_command == "echo basic"
+        assert shell_steps[1].shell_command == "deploy ${params.TARGET}"
+
+    def test_script_block_tainted(self, provider: JenkinsProvider, tmp_path: Path) -> None:
+        p = _write_jenkinsfile(
+            tmp_path,
+            """\
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                script {
+                    sh "echo ${env.CHANGE_TITLE}"
+                }
+            }
+        }
+    }
+}
+""",
+        )
+        wf = provider.parse(p)
+        shell_steps = [s for s in wf.jobs[0].steps if s.type == "shell"]
+        tainted = [e for s in shell_steps for e in s.expressions if e.is_tainted]
+        assert len(tainted) >= 1
+
+    def test_sh_named_arg(self, provider: JenkinsProvider, tmp_path: Path) -> None:
+        p = _write_jenkinsfile(
+            tmp_path,
+            """\
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                sh(script: "echo ${params.X}", returnStdout: true)
+            }
+        }
+    }
+}
+""",
+        )
+        wf = provider.parse(p)
+        steps = [s for s in wf.jobs[0].steps if s.type == "shell"]
+        assert len(steps) == 1
+        assert "params.X" in (steps[0].shell_command or "")

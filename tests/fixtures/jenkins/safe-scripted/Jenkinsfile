@@ -1,0 +1,11 @@
+node {
+    docker.image('node:18').inside {
+        stage('Build') {
+            sh 'npm install'
+            sh 'npm run build'
+        }
+        stage('Test') {
+            sh 'npm test'
+        }
+    }
+}

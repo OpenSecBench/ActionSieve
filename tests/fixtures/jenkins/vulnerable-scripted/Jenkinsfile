@@ -1,0 +1,12 @@
+@Library('shared-pipeline@main') _
+node('linux-build') {
+    stage('Build') {
+        sh "echo Building branch ${env.BRANCH_NAME}"
+        sh "echo PR: ${env.CHANGE_TITLE}"
+    }
+    stage('Deploy') {
+        withCredentials([string(credentialsId: 'deploy-token', variable: 'TOKEN')]) {
+            sh "deploy --token $TOKEN --target ${params.DEPLOY_TARGET}"
+        }
+    }
+}

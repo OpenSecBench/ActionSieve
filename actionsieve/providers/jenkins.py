@@ -1,4 +1,4 @@
-"""Jenkins declarative pipeline provider — regex-based parser."""
+"""Jenkins pipeline provider — tree-sitter Groovy parser."""
 
 from __future__ import annotations
 
@@ -18,17 +18,18 @@ from actionsieve.model import (
     WorkflowModel,
 )
 from actionsieve.providers import ExpressionSyntax, ParseError
+from actionsieve.providers.jenkins_ast import (
+    AgentInfo,
+    LibraryRef,
+    ShellCall,
+    extract_pipeline_info,
+    find_shell_calls,
+    parse_groovy,
+)
 
 MAX_FILE_SIZE = 1_048_576
 
 JENKINSFILE_NAMES = ("Jenkinsfile", "Jenkinsfile.groovy")
-
-LIBRARY_RE = re.compile(r"""@Library\(\s*['"]([^'"]+)['"]\s*\)""")
-LIBRARY_VERSION_RE = re.compile(r"^(.+?)@(.+)$")
-
-STAGE_RE = re.compile(r"""stage\s*\(\s*['"]([^'"]+)['"]\s*\)\s*\{""")
-
-SHELL_STEP_RE = re.compile(r"""\b(sh|bat|powershell)\s*(?:\(\s*)?""")
 
 INTERPOLATION_RE = re.compile(r"\$\{([^}]+)\}")
 GSTRING_VAR_RE = re.compile(r"\$(\w[\w.]*)")
@@ -43,32 +44,6 @@ TAINTED_CONTEXTS = (
     "env.CHANGE_BRANCH",
     "env.CHANGE_FORK",
     "env.TAG_NAME",
-)
-
-AGENT_LABEL_RE = re.compile(r"""agent\s*\{[^}]*label\s+['"]([^'"]+)['"]""", re.DOTALL)
-AGENT_ANY_RE = re.compile(r"agent\s+any\b")
-AGENT_NONE_RE = re.compile(r"agent\s+none\b")
-AGENT_DOCKER_RE = re.compile(
-    r"""agent\s*\{[^}]*docker\s*\{[^}]*image\s+['"]([^'"]+)['"]""", re.DOTALL
-)
-
-TRIGGER_CRON_RE = re.compile(r"""cron\s*\(\s*['"]([^'"]+)['"]\s*\)""")
-TRIGGER_POLLSCM_RE = re.compile(r"""pollSCM\s*\(\s*['"]([^'"]+)['"]\s*\)""")
-
-CREDENTIALS_RE = re.compile(r"""withCredentials\s*\(\s*\[([^\]]*)\]\s*\)""", re.DOTALL)
-CREDENTIAL_BINDING_RE = re.compile(
-    r"""(?:usernamePassword|string|file|sshUserPrivateKey|certificate)\s*\("""
-)
-CREDENTIAL_ID_RE = re.compile(r"""credentialsId:\s*['"]([^'"]+)['"]""")
-
-ENV_BLOCK_RE = re.compile(r"environment\s*\{([^}]*)\}", re.DOTALL)
-ENV_LINE_RE = re.compile(r"""(\w+)\s*=\s*['"]?([^'"\n]*)['"]?""")
-
-WHEN_BRANCH_RE = re.compile(r"""when\s*\{[^}]*branch\s+['"]([^'"]+)['"]""", re.DOTALL)
-
-PARAMS_RE = re.compile(
-    r"""(?:string|text|choice|booleanParam)\s*\([^)]*name:\s*['"](\w+)['"]""",
-    re.DOTALL,
 )
 
 
@@ -86,14 +61,42 @@ class JenkinsProvider:
             raise ParseError(f"File exceeds {MAX_FILE_SIZE} byte limit: {file_path}")
 
         text = file_path.read_text(encoding="utf-8")
-        if "pipeline" not in text:
-            raise ParseError(f"No pipeline block found: {file_path}")
+        tree = parse_groovy(text)
+        info = extract_pipeline_info(tree)
+        lines = text.splitlines()
 
-        libraries = _extract_libraries(text)
+        libraries = [_to_component_ref(lib) for lib in info.libraries]
         triggers = _extract_triggers(text)
-        env = _extract_env(text)
-        runner = _extract_agent(text)
-        jobs = _parse_stages(text, runner, libraries)
+        runner = _to_runner(info.agent)
+
+        jobs: list[Job] = []
+        if info.stages:
+            for stage in info.stages:
+                calls = find_shell_calls(stage.node)
+                steps = _to_steps(calls, lines)
+                lib_steps = _library_steps(libraries, lines, len(steps))
+                secrets = [c.cred_id for c in info.credentials]
+                jobs.append(
+                    Job(
+                        id=stage.name,
+                        runner=runner,
+                        name=stage.name,
+                        steps=lib_steps + steps,
+                        secrets_referenced=secrets,
+                    )
+                )
+        elif info.shell_calls:
+            steps = _to_steps(info.shell_calls, lines)
+            lib_steps = _library_steps(libraries, lines, len(steps))
+            secrets = [c.cred_id for c in info.credentials]
+            jobs.append(
+                Job(
+                    id="pipeline",
+                    runner=runner,
+                    steps=lib_steps + steps,
+                    secrets_referenced=secrets,
+                )
+            )
 
         return WorkflowModel(
             platform="jenkins",
@@ -101,7 +104,7 @@ class JenkinsProvider:
             raw={"_text": text},
             triggers=triggers,
             permissions=None,
-            env=env,
+            env=info.env,
             jobs=jobs,
         )
 
@@ -121,58 +124,64 @@ class JenkinsProvider:
         return None
 
 
-def _extract_libraries(text: str) -> list[ComponentRef]:
-    refs: list[ComponentRef] = []
-    lines = text.splitlines()
-    for m in LIBRARY_RE.finditer(text):
-        raw = m.group(1)
-        vm = LIBRARY_VERSION_RE.match(raw)
-        name = vm.group(1) if vm else raw
-        ref = vm.group(2) if vm else ""
-        refs.append(
-            ComponentRef(
-                raw=f"@Library('{raw}')",
-                owner=None,
-                name=name,
-                ref=ref,
-                ref_type="branch" if ref and not _is_tag(ref) else "tag" if ref else "unknown",
-                is_pinned=False,
-                is_first_party=name.startswith("jenkins-"),
-                line=_find_line(lines, raw),
-            )
-        )
-    return refs
+def _to_component_ref(lib: LibraryRef) -> ComponentRef:
+    return ComponentRef(
+        raw=f"@Library('{lib.raw}')",
+        owner=None,
+        name=lib.name,
+        ref=lib.version,
+        ref_type=_ref_type(lib.version),
+        is_pinned=False,
+        is_first_party=lib.name.startswith("jenkins-"),
+        line=lib.line,
+    )
 
 
-def _is_tag(ref: str) -> bool:
-    return bool(re.match(r"^v?\d+(\.\d+)*$", ref))
+def _ref_type(version: str) -> str:
+    if not version:
+        return "unknown"
+    if re.match(r"^v?\d+(\.\d+)*$", version):
+        return "tag"
+    return "branch"
+
+
+def _to_runner(agent: AgentInfo | None) -> Runner:
+    if not agent:
+        return Runner(labels=["any"], is_self_hosted=True, is_managed=False, raw="any")
+    if agent.kind == "docker":
+        lbl = agent.label
+        return Runner(labels=[lbl], is_self_hosted=False, is_managed=False, raw=lbl)
+    if agent.kind == "none":
+        return Runner(labels=["none"], is_self_hosted=False, is_managed=False, raw="none")
+    if agent.kind == "label":
+        return Runner(labels=[agent.label], is_self_hosted=True, is_managed=False, raw=agent.label)
+    return Runner(labels=["any"], is_self_hosted=True, is_managed=False, raw="any")
 
 
 def _extract_triggers(text: str) -> list[Trigger]:
     triggers: list[Trigger] = []
 
-    for m in TRIGGER_CRON_RE.finditer(text):
+    if re.search(r"""cron\s*\(\s*['"]([^'"]+)['"]\s*\)""", text):
         triggers.append(
             Trigger(
                 event="cron",
-                raw_event=m.group(1),
+                raw_event="cron",
                 is_privileged=True,
                 is_fork_reachable=False,
             )
         )
 
-    for m in TRIGGER_POLLSCM_RE.finditer(text):
+    if re.search(r"""pollSCM\s*\(\s*['"]([^'"]+)['"]\s*\)""", text):
         triggers.append(
             Trigger(
                 event="pollSCM",
-                raw_event=m.group(1),
+                raw_event="pollSCM",
                 is_privileged=True,
                 is_fork_reachable=False,
             )
         )
 
-    is_multibranch = "CHANGE_ID" in text or "BRANCH_NAME" in text
-    if is_multibranch:
+    if "CHANGE_ID" in text or "BRANCH_NAME" in text:
         triggers.append(
             Trigger(
                 event="multibranch",
@@ -195,94 +204,20 @@ def _extract_triggers(text: str) -> list[Trigger]:
     return triggers
 
 
-def _extract_agent(text: str) -> Runner:
-    m = AGENT_LABEL_RE.search(text)
-    if m:
-        label = m.group(1)
-        return Runner(
-            labels=[label],
-            is_self_hosted=True,
-            is_managed=False,
-            raw=label,
-        )
-
-    m = AGENT_DOCKER_RE.search(text)
-    if m:
-        image = m.group(1)
-        return Runner(labels=[image], is_self_hosted=False, is_managed=False, raw=image)
-
-    if AGENT_NONE_RE.search(text):
-        return Runner(labels=["none"], is_self_hosted=False, is_managed=False, raw="none")
-
-    return Runner(labels=["any"], is_self_hosted=True, is_managed=False, raw="any")
-
-
-def _extract_env(text: str) -> dict[str, str]:
-    env: dict[str, str] = {}
-    for m in ENV_BLOCK_RE.finditer(text):
-        block = m.group(1)
-        for em in ENV_LINE_RE.finditer(block):
-            env[em.group(1)] = em.group(2).strip()
-    return env
-
-
-def _parse_stages(
-    text: str,
-    default_runner: Runner,
-    libraries: list[ComponentRef],
-) -> list[Job]:
-    jobs: list[Job] = []
-    lines = text.splitlines()
-    stage_matches = list(STAGE_RE.finditer(text))
-
-    for i, sm in enumerate(stage_matches):
-        stage_name = sm.group(1)
-        start = sm.end()
-        end = stage_matches[i + 1].start() if i + 1 < len(stage_matches) else len(text)
-        stage_text = text[start:end]
-
-        steps = _parse_steps(stage_text, lines)
-        secrets = _find_secrets(stage_text)
-        conditions = _extract_conditions(stage_text)
-
-        agent_m = AGENT_LABEL_RE.search(stage_text)
-        runner = default_runner
-        if agent_m:
-            label = agent_m.group(1)
-            runner = Runner(labels=[label], is_self_hosted=True, is_managed=False, raw=label)
-
-        lib_steps = _library_steps(libraries, lines, len(steps))
-        all_steps = lib_steps + steps
-
-        jobs.append(
-            Job(
-                id=stage_name,
-                runner=runner,
-                name=stage_name,
-                steps=all_steps,
-                secrets_referenced=secrets,
-                conditions=conditions,
+def _to_steps(calls: list[ShellCall], lines: list[str]) -> list[Step]:
+    steps: list[Step] = []
+    for i, call in enumerate(calls):
+        exprs = _extract_expressions(call.command, lines) if not call.is_safe_string else []
+        steps.append(
+            Step(
+                index=i,
+                type="shell",
+                name=call.cmd_type,
+                shell_command=call.command,
+                expressions=exprs,
             )
         )
-
-    if not jobs and _has_steps_outside_stages(text):
-        steps = _parse_steps(text, lines)
-        secrets = _find_secrets(text)
-        lib_steps = _library_steps(libraries, lines, len(steps))
-        jobs.append(
-            Job(
-                id="pipeline",
-                runner=default_runner,
-                steps=lib_steps + steps,
-                secrets_referenced=secrets,
-            )
-        )
-
-    return jobs
-
-
-def _has_steps_outside_stages(text: str) -> bool:
-    return bool(SHELL_STEP_RE.search(text))
+    return steps
 
 
 def _library_steps(
@@ -299,59 +234,6 @@ def _library_steps(
         )
         for i, lib in enumerate(libraries)
     ]
-
-
-def _parse_steps(stage_text: str, lines: list[str]) -> list[Step]:
-    steps: list[Step] = []
-    idx = 0
-
-    for m in SHELL_STEP_RE.finditer(stage_text):
-        cmd_type = m.group(1)
-        start = m.end()
-        cmd = _extract_string_arg(stage_text, start)
-        if cmd is None:
-            continue
-
-        exprs = _extract_expressions(cmd, lines)
-        steps.append(
-            Step(
-                index=idx,
-                type="shell",
-                name=cmd_type,
-                shell_command=cmd,
-                expressions=exprs,
-            )
-        )
-        idx += 1
-
-    return steps
-
-
-_SCRIPT_ARG_RE = re.compile(r"script\s*:\s*")
-
-
-def _extract_string_arg(text: str, pos: int) -> str | None:
-    remaining = text[pos:].lstrip()
-
-    m = _SCRIPT_ARG_RE.match(remaining)
-    if m:
-        remaining = remaining[m.end() :]
-
-    for triple in ("'''", '"""'):
-        if remaining.startswith(triple):
-            end = remaining.find(triple, len(triple))
-            if end == -1:
-                return None
-            return remaining[len(triple) : end]
-
-    for quote in ("'", '"'):
-        if remaining.startswith(quote):
-            end = remaining.find(quote, 1)
-            if end == -1:
-                return None
-            return remaining[1:end]
-
-    return None
 
 
 def _extract_expressions(text: str, lines: list[str]) -> list[Expression]:
@@ -396,25 +278,6 @@ def _extract_expressions(text: str, lines: list[str]) -> list[Expression]:
         )
 
     return expressions
-
-
-def _find_secrets(text: str) -> list[str]:
-    secrets: list[str] = []
-    for m in CREDENTIALS_RE.finditer(text):
-        block = m.group(1)
-        for cm in CREDENTIAL_ID_RE.finditer(block):
-            cred_id = cm.group(1)
-            if cred_id not in secrets:
-                secrets.append(cred_id)
-    return secrets
-
-
-def _extract_conditions(text: str) -> list[str]:
-    conditions: list[str] = []
-    m = WHEN_BRANCH_RE.search(text)
-    if m:
-        conditions.append(f"branch == '{m.group(1)}'")
-    return conditions
 
 
 def _find_line(lines: list[str], needle: str) -> int:
