@@ -167,6 +167,37 @@ class TestArtifactSupplyChain:
         assert len(chain_findings) == 0
 
 
+class TestMissingPermissions:
+    def test_detects_missing_permissions(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/expression-injection.yml")
+        perm_findings = [f for f in findings if f.pattern_id == "missing-permissions-block"]
+        assert len(perm_findings) == 1
+        assert perm_findings[0].severity_base == "info"
+
+    def test_permissions_present_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/minimal-permissions.yml")
+        perm_findings = [f for f in findings if f.pattern_id == "missing-permissions-block"]
+        assert len(perm_findings) == 0
+
+    def test_workflow_level_permissions_sufficient(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/pwn-request.yml")
+        perm_findings = [f for f in findings if f.pattern_id == "missing-permissions-block"]
+        assert len(perm_findings) == 0
+
+
+class TestCheckoutPersistsCredentials:
+    def test_detects_default_persist(self) -> None:
+        findings = _scan("vulnerable/.github/workflows/unpinned-actions.yml")
+        cred_findings = [f for f in findings if f.pattern_id == "checkout-persists-credentials"]
+        assert len(cred_findings) >= 1
+        assert cred_findings[0].severity_base == "low"
+
+    def test_persist_false_not_flagged(self) -> None:
+        findings = _scan("safe/.github/workflows/minimal-permissions.yml")
+        cred_findings = [f for f in findings if f.pattern_id == "checkout-persists-credentials"]
+        assert len(cred_findings) == 0
+
+
 class TestNoFalsePositivesOnSafe:
     def test_env_indirection(self) -> None:
         findings = _scan("safe/.github/workflows/env-indirection.yml")

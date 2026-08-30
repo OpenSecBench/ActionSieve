@@ -28,6 +28,8 @@ def match_structural(
         "workflow-run-artifact-trust": _match_workflow_run_artifacts,
         "artifact-supply-chain": _match_artifact_supply_chain,
         "circleci-dynamic-config": _match_circleci_dynamic_config,
+        "missing-permissions-block": _match_missing_permissions,
+        "checkout-persists-credentials": _match_checkout_persists_creds,
     }
 
     matcher = dispatch.get(pid)
@@ -229,6 +231,62 @@ def _match_circleci_dynamic_config(
             line=0,
         )
     ]
+
+
+def _match_missing_permissions(
+    model: WorkflowModel,
+    pattern: dict[str, Any],
+    make_finding: MakeFinding,
+) -> list[Finding]:
+    if model.platform != "github":
+        return []
+    if model.permissions is not None:
+        return []
+    all_jobs_have_perms = model.jobs and all(j.permissions is not None for j in model.jobs)
+    if all_jobs_have_perms:
+        return []
+    if not model.jobs:
+        return []
+    return [
+        make_finding(
+            pattern=pattern,
+            model=model,
+            job=model.jobs[0],
+            step=None,
+            evidence=["No top-level or per-job permissions: block"],
+            line=0,
+        )
+    ]
+
+
+def _match_checkout_persists_creds(
+    model: WorkflowModel,
+    pattern: dict[str, Any],
+    make_finding: MakeFinding,
+) -> list[Finding]:
+    if model.platform != "github":
+        return []
+    findings: list[Finding] = []
+    for job in model.jobs:
+        for step in job.steps:
+            if step.action_ref is None or "checkout" not in step.action_ref.name:
+                continue
+            persist = step.inputs.get("persist-credentials", "")
+            if persist.lower() == "false":
+                continue
+            findings.append(
+                make_finding(
+                    pattern=pattern,
+                    model=model,
+                    job=job,
+                    step=step,
+                    evidence=[
+                        "actions/checkout without persist-credentials: false",
+                    ],
+                    line=step.action_ref.line,
+                )
+            )
+    return findings
 
 
 def _match_structural_checks(

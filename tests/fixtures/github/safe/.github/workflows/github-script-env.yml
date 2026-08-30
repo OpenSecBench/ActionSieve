@@ -1,6 +1,9 @@
 name: Comment greeting (safe)
 on: issue_comment
 
+permissions:
+  contents: read
+
 jobs:
   greet:
     runs-on: ubuntu-latest

@@ -14,9 +14,14 @@ on:
         description: Confirm deploy
         type: boolean
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - run: ./deploy.sh --env ${{ inputs.environment }}

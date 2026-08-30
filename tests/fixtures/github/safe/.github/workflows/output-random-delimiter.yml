@@ -1,11 +1,16 @@
 name: Process PR (random delimiter)
 on: pull_request
 
+permissions:
+  contents: read
+
 jobs:
   process:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Get description
         id: desc
         run: |

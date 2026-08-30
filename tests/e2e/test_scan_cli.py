@@ -188,6 +188,42 @@ class TestChainDetectionFindings:
         assert len(chain_findings) == 0
 
 
+class TestHardeningFindings:
+    def test_missing_permissions_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "missing-permissions-block" in ids
+
+    def test_checkout_persists_credentials_detected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "checkout-persists-credentials" in ids
+
+    def test_safe_fixtures_no_hardening_findings(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["scan", "--platform", "github", str(FIXTURES / "safe")],
+        )
+        data = json.loads(result.output)
+        hardening = [
+            f
+            for f in data["findings"]
+            if f["pattern_id"] in ("missing-permissions-block", "checkout-persists-credentials")
+        ]
+        assert len(hardening) == 0
+
+
 class TestTrustRepoProfile:
     def _make_repo(self, tmp_path: Path) -> Path:
         wf_dir = tmp_path / ".github" / "workflows"

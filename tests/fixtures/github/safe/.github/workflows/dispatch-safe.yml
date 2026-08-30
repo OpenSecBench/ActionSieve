@@ -10,11 +10,16 @@ on:
           - staging
           - production
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - run: ./deploy.sh "$TARGET"
         env:
           TARGET: ${{ inputs.target }}
