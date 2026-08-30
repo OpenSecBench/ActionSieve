@@ -1,0 +1,24 @@
+steps:
+  - label: ":hammer: Build"
+    command:
+      - echo "Building $BUILDKITE_BRANCH"
+      - make build
+    plugins:
+      - myorg/deploy#v1:
+          target: staging
+
+  - label: ":rocket: Deploy"
+    command: echo "Deploying ${BUILDKITE_MESSAGE}"
+    agents:
+      queue: deploy
+
+  - label: ":pipeline: Upload"
+    command: buildkite-agent pipeline upload .buildkite/dynamic.yml
+
+  - label: ":docker: Docker"
+    command:
+      - docker build -t myapp .
+      - docker push myapp
+    plugins:
+      - docker-compose#v4.0.0:
+          run: app
