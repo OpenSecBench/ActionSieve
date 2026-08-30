@@ -27,7 +27,6 @@ if TYPE_CHECKING:
 EXIT_CLEAN = 0
 EXIT_FINDINGS = 1
 EXIT_CRITICAL = 2
-EXIT_ADVISORY = 3
 
 SEVERITY_ORDER = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
 
