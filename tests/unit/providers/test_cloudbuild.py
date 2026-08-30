@@ -267,6 +267,39 @@ availableSecrets:
         assert any("api-key" in s for s in wf.jobs[0].secrets_referenced)
 
 
+class TestStepEnv:
+    def test_list_env_parsed(self, provider: CloudBuildProvider, tmp_path: Path) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+steps:
+  - name: 'amazon/aws-cli'
+    env:
+      - 'AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE'
+      - 'AWS_SECRET_ACCESS_KEY=secret'
+    args:
+      - s3
+      - sync
+""",
+        )
+        wf = provider.parse(p)
+        assert wf.jobs[0].steps[0].env["AWS_ACCESS_KEY_ID"] == "AKIAIOSFODNN7EXAMPLE"
+
+    def test_empty_env_ok(self, provider: CloudBuildProvider, tmp_path: Path) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - build
+      - .
+""",
+        )
+        wf = provider.parse(p)
+        assert wf.jobs[0].steps[0].env == {}
+
+
 class TestRunner:
     def test_default_managed(self, provider: CloudBuildProvider, tmp_path: Path) -> None:
         p = _write_config(

@@ -193,6 +193,23 @@ phases:
         tainted = [e for e in wf.jobs[0].steps[0].expressions if e.is_tainted]
         assert len(tainted) == 1
 
+    def test_colon_misparse_coerced(self, provider: CodeBuildProvider, tmp_path: Path) -> None:
+        p = _write_config(
+            tmp_path,
+            """\
+version: 0.2
+phases:
+  build:
+    commands:
+      - echo "Branch: $CODEBUILD_WEBHOOK_HEAD_REF"
+""",
+        )
+        wf = provider.parse(p)
+        assert len(wf.jobs[0].steps) == 1
+        tainted = [e for e in wf.jobs[0].steps[0].expressions if e.is_tainted]
+        assert len(tainted) == 1
+        assert tainted[0].context_path == "CODEBUILD_WEBHOOK_HEAD_REF"
+
     def test_safe_command(self, provider: CodeBuildProvider, tmp_path: Path) -> None:
         p = _write_config(
             tmp_path,

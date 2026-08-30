@@ -26,11 +26,11 @@ patterns:
       in_block: run
       grep_patterns:
         - 'docker run '
-        - 'docker build '
         - 'docker exec '
         - '--privileged'
         - '-v /var/run/docker.sock'
         - '-v /:/host'
+        - 'dockerd'
     mitigations:
       - Use dedicated container build actions (docker/build-push-action)
       - Avoid mounting the Docker socket inside containers

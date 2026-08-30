@@ -150,8 +150,9 @@ def _parse_phases(doc: dict[str, Any], lines: list[str]) -> list[Step]:
             cmds = phase.get(block, [])
             if not isinstance(cmds, list):
                 continue
-            for cmd in cmds:
-                if not isinstance(cmd, str):
+            for raw_cmd in cmds:
+                cmd = _coerce_command(raw_cmd)
+                if cmd is None:
                     continue
                 steps.append(
                     Step(
@@ -164,6 +165,14 @@ def _parse_phases(doc: dict[str, Any], lines: list[str]) -> list[Step]:
                 )
 
     return steps
+
+
+def _coerce_command(value: Any) -> str | None:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return ": ".join(f"{k}: {v}" for k, v in value.items())
+    return None
 
 
 def _parse_build_image(doc: dict[str, Any]) -> str | None:

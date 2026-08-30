@@ -164,6 +164,7 @@ def _parse_steps(doc: dict[str, Any], lines: list[str]) -> list[Step]:
             continue
 
         ref = _parse_image_ref(image, lines)
+        step_env = _parse_step_env(step_data)
 
         script = step_data.get("script")
         args = step_data.get("args", [])
@@ -177,6 +178,7 @@ def _parse_steps(doc: dict[str, Any], lines: list[str]) -> list[Step]:
                     name=step_data.get("id") or f"step-{i}",
                     shell_command=script,
                     action_ref=ref,
+                    env=step_env,
                     expressions=_extract_expressions(script, lines),
                 )
             )
@@ -189,6 +191,7 @@ def _parse_steps(doc: dict[str, Any], lines: list[str]) -> list[Step]:
                     name=step_data.get("id") or f"step-{i}",
                     shell_command=cmd,
                     action_ref=ref,
+                    env=step_env,
                     expressions=_extract_expressions(cmd, lines),
                 )
             )
@@ -199,17 +202,38 @@ def _parse_steps(doc: dict[str, Any], lines: list[str]) -> list[Step]:
                     type="action",
                     name=step_data.get("id") or f"step-{i}",
                     action_ref=ref,
+                    env=step_env,
                 )
             )
 
     return steps
 
 
+def _parse_step_env(step_data: dict[str, Any]) -> dict[str, str]:
+    env_list = step_data.get("env", [])
+    if not isinstance(env_list, list):
+        return {}
+    result: dict[str, str] = {}
+    for item in env_list:
+        if isinstance(item, str) and "=" in item:
+            key, _, val = item.partition("=")
+            result[key] = val
+    return result
+
+
+def _coerce_arg(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return ": ".join(f"{k}: {v}" for k, v in value.items())
+    return str(value)
+
+
 def _args_to_command(entrypoint: Any, args: list[Any]) -> str:
     parts = []
     if isinstance(entrypoint, str) and entrypoint:
         parts.append(entrypoint)
-    parts.extend(str(a) for a in args)
+    parts.extend(_coerce_arg(a) for a in args)
     return " ".join(parts)
 
 

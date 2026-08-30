@@ -50,3 +50,8 @@ class TestCloudBuildScan:
         data = _scan(["scan", "--platform", "cloudbuild", VULN])
         ids = [f["pattern_id"] for f in data["findings"]]
         assert "mutable-action-ref" in ids
+
+    def test_static_credentials_detected(self) -> None:
+        data = _scan(["scan", "--platform", "cloudbuild", VULN])
+        ids = [f["pattern_id"] for f in data["findings"]]
+        assert "static-cloud-credentials" in ids
