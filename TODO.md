@@ -133,13 +133,13 @@
 
 ## Phase 4: GitLab CI + Azure Pipelines
 
-- [ ] `providers/gitlab.py` — full provider implementation
-- [ ] GitLab fixtures (vulnerable + safe)
-- [ ] GitLab-specific patterns (CI_JOB_TOKEN, trigger injection, include remote)
-- [ ] `providers/azure.py` — full provider implementation
-- [ ] Azure fixtures (vulnerable + safe)
-- [ ] Azure-specific patterns (template expressions, service connections)
-- [ ] Cross-platform pattern coverage tests (same pattern, multiple platforms)
+- [x] `providers/gitlab.py` — full provider implementation
+- [x] GitLab fixtures (vulnerable + safe)
+- [x] GitLab-specific patterns (CI_JOB_TOKEN, trigger injection, include remote)
+- [x] `providers/azure.py` — full provider implementation
+- [x] Azure fixtures (vulnerable + safe)
+- [x] Azure-specific patterns (template expressions, service connections)
+- [x] Cross-platform pattern coverage tests (same pattern, multiple platforms)
 
 ## Phase 5: Forge search
 

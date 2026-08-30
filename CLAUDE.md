@@ -244,6 +244,6 @@ htmlcov/
 
 ## Current phase
 
-Phases 1–3 complete (GitHub Actions scanner, component inventory, chain
-detection). See `docs/architecture.md` for the full 6-phase implementation
+Phases 1–4 complete (GitHub Actions scanner, component inventory, chain
+detection, GitLab CI + Azure Pipelines). See `docs/architecture.md` for the full 6-phase implementation
 plan and `TODO.md` for the task breakdown.
