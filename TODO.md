@@ -163,6 +163,11 @@
 - [ ] Pattern catalog versioning and update mechanism
 - [ ] Interactive TUI for triaging search results (textual or rich)
 
+## Backlog — from corpus testing
+
+- [ ] Composite action scanning — resolve `uses: ./path` to `action.yml`, scan composite steps for injection
+- [ ] Reusable workflow ref pinning — extend `mutable-action-ref` to job-level `uses:` for reusable workflow refs
+
 ## Ongoing
 
 - [ ] Keep pattern catalog updated as new attack patterns are discovered
