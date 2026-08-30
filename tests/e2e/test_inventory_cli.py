@@ -126,6 +126,53 @@ class TestInventoryOnlineFlag:
         assert "--token" in result.output
 
 
+class TestExcludeLocal:
+    def test_exclude_local_removes_dot_refs(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main, ["inventory", "--exclude-local", str(FIXTURES / "vulnerable")]
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        for comp in data["components"]:
+            assert not comp["ref"].startswith("./")
+
+    def test_exclude_local_in_help(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, ["inventory", "--help"])
+        assert "--exclude-local" in result.output
+        assert "--repo" in result.output
+
+
+class TestRepoMetadata:
+    def test_repo_flag_in_output(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["inventory", "--repo", "github.com/org/repo", str(FIXTURES / "vulnerable")],
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["summary"]["repo"] == "github.com/org/repo"
+
+    def test_repo_in_cyclonedx_metadata(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "inventory",
+                "--format",
+                "cyclonedx",
+                "--repo",
+                "github.com/org/repo",
+                str(FIXTURES / "vulnerable"),
+            ],
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["metadata"]["component"]["name"] == "github.com/org/repo"
+
+
 class TestCycloneDxFormat:
     def test_purl_format(self) -> None:
         runner = CliRunner()
@@ -136,6 +183,36 @@ class TestCycloneDxFormat:
         data = json.loads(result.output)
         for comp in data["components"]:
             assert comp["purl"].startswith("pkg:githubactions/")
+
+    def test_cyclonedx_excludes_local_refs(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["inventory", "--format", "cyclonedx", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        for comp in data["components"]:
+            assert not comp["name"].startswith(".")
+
+    def test_cyclonedx_has_timestamp(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["inventory", "--format", "cyclonedx", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        assert "timestamp" in data["metadata"]
+
+    def test_cyclonedx_has_platform_property(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["inventory", "--format", "cyclonedx", str(FIXTURES / "vulnerable")],
+        )
+        data = json.loads(result.output)
+        comp = data["components"][0]
+        prop_names = [p["name"] for p in comp["properties"]]
+        assert "actionsieve:platform" in prop_names
 
     def test_actionsieve_properties(self) -> None:
         runner = CliRunner()

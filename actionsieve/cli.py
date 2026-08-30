@@ -189,6 +189,17 @@ def scan(
     type=str,
     help="API token for online checks (also reads GITHUB_TOKEN env var).",
 )
+@click.option(
+    "--exclude-local",
+    is_flag=True,
+    default=False,
+    help="Exclude repo-local actions (./path) from output.",
+)
+@click.option(
+    "--repo",
+    type=str,
+    help="Repository identifier for BOM metadata (auto-detected from git remote).",
+)
 def inventory(
     path: Path,
     check: bool,
@@ -198,6 +209,8 @@ def inventory(
     offline: bool,
     online: bool,
     token: str | None,
+    exclude_local: bool,
+    repo: str | None,
 ) -> None:
     """Generate a bill of materials for CI/CD components."""
     if online and offline:
@@ -213,6 +226,8 @@ def inventory(
         offline=offline,
         online=online,
         token=token,
+        exclude_local=exclude_local,
+        repo=repo,
     )
 
     text = render_inventory(inv, output_format, output_file)

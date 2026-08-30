@@ -41,6 +41,10 @@ class Component:
             return f"{self.owner}/{self.name}"
         return self.name
 
+    @property
+    def is_local(self) -> bool:
+        return self.owner == "." or self.raw.startswith("./") or self.raw.startswith(".\\")
+
 
 @dataclass
 class Inventory:
@@ -51,18 +55,22 @@ class Inventory:
     first_party_count: int
     third_party_count: int
     advisory_matches: int = 0
+    repo: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        summary: dict[str, Any] = {
+            "total_refs": self.total_refs,
+            "unique_components": len(self.components),
+            "pinned": self.pinned_count,
+            "unpinned": self.unpinned_count,
+            "first_party": self.first_party_count,
+            "third_party": self.third_party_count,
+            "advisory_matches": self.advisory_matches,
+        }
+        if self.repo:
+            summary["repo"] = self.repo
         return {
-            "summary": {
-                "total_refs": self.total_refs,
-                "unique_components": len(self.components),
-                "pinned": self.pinned_count,
-                "unpinned": self.unpinned_count,
-                "first_party": self.first_party_count,
-                "third_party": self.third_party_count,
-                "advisory_matches": self.advisory_matches,
-            },
+            "summary": summary,
             "components": [_component_dict(c) for c in self.components],
         }
 
@@ -151,6 +159,8 @@ def run_inventory(
     offline: bool = False,
     online: bool = False,
     token: str | None = None,
+    exclude_local: bool = False,
+    repo: str | None = None,
 ) -> Inventory:
     from actionsieve.providers import ParseError, auto_detect, get_provider
 
@@ -167,6 +177,9 @@ def run_inventory(
 
     inv = collect(models)
 
+    if exclude_local:
+        inv = _filter_local(inv)
+
     if check:
         from actionsieve.advisories import check_advisories
 
@@ -179,7 +192,52 @@ def run_inventory(
 
     score_components(inv)
 
+    inv.repo = repo or _detect_repo(repo_path)
+
     return inv
+
+
+def _filter_local(inv: Inventory) -> Inventory:
+    filtered = [c for c in inv.components if not c.is_local]
+    pinned = sum(1 for c in filtered if c.is_pinned)
+    first_party = sum(1 for c in filtered if c.is_first_party)
+    return Inventory(
+        components=filtered,
+        total_refs=inv.total_refs,
+        pinned_count=pinned,
+        unpinned_count=len(filtered) - pinned,
+        first_party_count=first_party,
+        third_party_count=len(filtered) - first_party,
+    )
+
+
+def _detect_repo(repo_path: Path) -> str | None:
+    import subprocess
+
+    try:
+        result = subprocess.run(  # noqa: S603
+            ["git", "remote", "get-url", "origin"],  # noqa: S607
+            capture_output=True,
+            text=True,
+            cwd=repo_path,
+            check=False,
+        )
+    except FileNotFoundError:
+        return None
+    if result.returncode != 0:
+        return None
+    url = result.stdout.strip()
+    return _normalize_git_url(url) if url else None
+
+
+def _normalize_git_url(url: str) -> str:
+    import re
+
+    url = re.sub(r"\.git$", "", url)
+    m = re.match(r"git@([^:]+):(.+)", url)
+    if m:
+        return f"https://{m.group(1)}/{m.group(2)}"
+    return url
 
 
 def _verify_online(inv: Inventory, token: str | None) -> None:

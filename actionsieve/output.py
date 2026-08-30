@@ -231,6 +231,8 @@ def _render_cyclonedx(inv: Inventory) -> str:
     components: list[dict[str, Any]] = []
 
     for comp in inv.components:
+        if comp.is_local:
+            continue
         purl = _make_purl(comp)
         cdx_comp: dict[str, Any] = {
             "type": "library",
@@ -241,6 +243,7 @@ def _render_cyclonedx(inv: Inventory) -> str:
                 {"name": "actionsieve:ref_type", "value": comp.ref_type},
                 {"name": "actionsieve:is_pinned", "value": str(comp.is_pinned).lower()},
                 {"name": "actionsieve:is_first_party", "value": str(comp.is_first_party).lower()},
+                {"name": "actionsieve:platform", "value": comp.platform},
             ],
         }
         if comp.trust_score:
@@ -253,23 +256,46 @@ def _render_cyclonedx(inv: Inventory) -> str:
             )
         components.append(cdx_comp)
 
+    metadata: dict[str, Any] = {
+        "timestamp": datetime.now(UTC).isoformat(),
+        "tools": [{"name": "actionsieve"}],
+    }
+    if inv.repo:
+        metadata["component"] = {
+            "type": "application",
+            "name": inv.repo,
+        }
+
     bom: dict[str, Any] = {
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
         "version": 1,
-        "metadata": {
-            "tools": [{"name": "actionsieve"}],
-        },
+        "metadata": metadata,
         "components": components,
     }
 
     return json.dumps(bom, indent=2)
 
 
+_PURL_NAMESPACE = {
+    "github": "githubactions",
+    "gitlab": "gitlabci",
+    "azure": "azurepipelines",
+    "jenkins": "jenkins",
+    "circleci": "circleci",
+    "bitbucket": "bitbucket",
+    "buildkite": "buildkite",
+    "drone": "drone",
+    "codebuild": "codebuild",
+    "cloudbuild": "cloudbuild",
+}
+
+
 def _make_purl(comp: Any) -> str:
-    if comp.owner:
-        return f"pkg:githubactions/{comp.owner}/{comp.name}@{comp.ref}"
-    return f"pkg:githubactions/{comp.name}@{comp.ref}"
+    ns = _PURL_NAMESPACE.get(comp.platform, "cicd")
+    if comp.owner and comp.owner != ".":
+        return f"pkg:{ns}/{comp.owner}/{comp.name}@{comp.ref}"
+    return f"pkg:{ns}/{comp.name}@{comp.ref}"
 
 
 def _sarif_level(severity: str) -> str:
