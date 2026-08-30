@@ -194,11 +194,11 @@
 - [x] Unit + E2E tests
 
 ### Drone / Harness CI
-- [ ] `providers/drone.py` — detect `.drone.yml`, parse to WorkflowModel
-- [ ] Plugin image references as ComponentRef
-- [ ] Variable injection in `commands:`
-- [ ] Drone fixtures (vulnerable + safe)
-- [ ] Unit + E2E tests
+- [x] `providers/drone.py` — detect `.drone.yml`, parse to WorkflowModel
+- [x] Plugin image references as ComponentRef
+- [x] Variable injection in `commands:`
+- [x] Drone fixtures (vulnerable + safe)
+- [x] Unit + E2E tests
 
 ### Cloud vendor CI
 - [ ] `providers/codebuild.py` — AWS CodeBuild `buildspec.yml`

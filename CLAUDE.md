@@ -71,6 +71,8 @@ actionsieve/
     circleci.py       — CircleCI provider
     circleci_parse.py — CircleCI orb, step, expression parsing
     bitbucket.py      — Bitbucket Pipelines provider
+    buildkite.py      — Buildkite Pipelines provider
+    drone.py          — Drone CI provider
 
 patterns/                  — YAML pattern catalog (data, not code)
 patterns/advisories/       — known-compromised component database
