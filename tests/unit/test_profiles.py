@@ -79,8 +79,38 @@ class TestExtends:
     def test_extends_unknown_raises(self, tmp_path: Path) -> None:
         profile_file = tmp_path / "profile.yml"
         profile_file.write_text("profile:\n  extends: nonexistent\n")
-        with pytest.raises(ProfileError, match="Unknown base profile"):
+        with pytest.raises(ProfileError, match="nonexistent"):
             load_profile(str(profile_file))
+
+
+class TestSchemaValidation:
+    def test_rejects_unknown_runner_type(self, tmp_path: Path) -> None:
+        p = tmp_path / "profile.yml"
+        p.write_text("runners:\n  type: imaginary\n")
+        with pytest.raises(ProfileError, match="validation failed"):
+            load_profile(str(p))
+
+    def test_rejects_unknown_field(self, tmp_path: Path) -> None:
+        p = tmp_path / "profile.yml"
+        p.write_text("made_up_field: true\n")
+        with pytest.raises(ProfileError, match="validation failed"):
+            load_profile(str(p))
+
+    def test_rejects_invalid_suppress_type(self, tmp_path: Path) -> None:
+        p = tmp_path / "profile.yml"
+        p.write_text("suppress: not-a-list\n")
+        with pytest.raises(ProfileError, match="validation failed"):
+            load_profile(str(p))
+
+    def test_accepts_valid_profile(self, tmp_path: Path) -> None:
+        p = tmp_path / "profile.yml"
+        p.write_text(
+            "runners:\n  type: ephemeral\n  isolation: container\n"
+            "forks:\n  policy: open\n"
+            "suppress:\n  - self-hosted-runners\n"
+        )
+        profile = load_profile(str(p))
+        assert profile["runners"]["type"] == "ephemeral"
 
 
 class TestAutoDiscovery:

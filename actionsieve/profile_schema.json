@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "actionsieve environment profile",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "profile": {
+      "$ref": "#/$defs/profile_body"
+    },
+    "extends": {
+      "type": "string",
+      "enum": ["default", "hosted-public", "hosted-private", "self-hosted", "hardened"]
+    },
+    "runners": { "$ref": "#/$defs/runners" },
+    "forks": { "$ref": "#/$defs/forks" },
+    "secrets": { "$ref": "#/$defs/secrets" },
+    "branch_protection": { "$ref": "#/$defs/branch_protection" },
+    "suppress": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "elevate": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "profile_body": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "extends": {
+          "type": "string",
+          "enum": ["default", "hosted-public", "hosted-private", "self-hosted", "hardened"]
+        },
+        "runners": { "$ref": "#/$defs/runners" },
+        "forks": { "$ref": "#/$defs/forks" },
+        "secrets": { "$ref": "#/$defs/secrets" },
+        "branch_protection": { "$ref": "#/$defs/branch_protection" },
+        "suppress": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "elevate": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "runners": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["ephemeral", "persistent"] },
+        "isolation": { "enum": ["container", "vm", "bare_metal"] },
+        "network": { "enum": ["open", "restricted"] }
+      }
+    },
+    "forks": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "policy": { "enum": ["open", "restricted", "disabled"] }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "backend": { "enum": ["env_vars", "oidc", "vault"] },
+        "rotation": { "enum": ["manual", "automatic"] }
+      }
+    },
+    "branch_protection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "level": { "enum": ["none", "basic", "strict"] },
+        "required_reviews": { "type": "integer", "minimum": 0, "maximum": 10 }
+      }
+    }
+  }
+}

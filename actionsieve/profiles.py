@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
+import jsonschema
 import yaml
+
+SCHEMA_PATH = Path(__file__).parent / "profile_schema.json"
 
 BUILTIN_PROFILES: dict[str, dict[str, Any]] = {
     "default": {},
@@ -73,6 +77,8 @@ def _load_from_file(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ProfileError(f"Profile must be a mapping: {path}")
 
+    _validate_schema(data, path)
+
     profile = data.get("profile", data)
     if not isinstance(profile, dict):
         raise ProfileError(f"Profile must be a mapping: {path}")
@@ -87,6 +93,14 @@ def _load_from_file(path: Path) -> dict[str, Any]:
         return base
 
     return dict(profile)
+
+
+def _validate_schema(data: dict[str, Any], path: Path) -> None:
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    try:
+        jsonschema.validate(data, schema)
+    except jsonschema.ValidationError as e:
+        raise ProfileError(f"Profile validation failed in {path}: {e.message}") from e
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> None:

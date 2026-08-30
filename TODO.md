@@ -61,7 +61,7 @@
 - [x] `severity.py` — stage 2: adjust by environment profile (suppress, elevate, modifier rules)
 - [x] `severity.py` — output both static_severity and computed_severity in results
 - [x] `profiles.py` — load profile from `.actionsieve.yml`, `~/.config/actionsieve/profile.yml`, or `--profile`
-- [ ] `profiles.py` — profile schema validation
+- [x] `profiles.py` — profile schema validation
 - [x] `profiles.py` — built-in presets: hosted-public, hosted-private, self-hosted, hardened
 - [x] `profiles.py` — `extends:` support (inherit preset, override specific fields)
 - [x] `profiles.py` — suppress/elevate category handling
@@ -90,7 +90,7 @@
 - [x] `cli.py` — `--offline` flag (skip network calls in resolve_ref)
 - [x] `cli.py` — exit codes (0/1/2/3)
 - [x] E2E tests: scan fixture repos, verify exit codes and output
-- [ ] E2E tests: --diff mode only reports findings in changed files
+- [x] E2E tests: --diff mode only reports findings in changed files
 - [x] E2E tests: --profile adjusts severity and suppresses as expected
 
 ### Test fixtures (GitHub)
