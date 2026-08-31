@@ -6,7 +6,29 @@ Multi-platform CI/CD pipeline security scanner. Finds injection
 vulnerabilities, supply chain risks, and misconfigurations across 10
 CI/CD platforms using a pattern-driven detection engine.
 
-## What it finds
+## Features
+
+- **Security scanning** — pattern-driven detection of expression
+  injection, dangerous triggers, secret exposure, privilege escalation,
+  cache poisoning, and hardening gaps
+- **Actions Bill of Materials (ABOM)** — inventory every external
+  action, orb, pipe, and plugin across your pipelines with
+  `actionsieve inventory`
+- **Supply chain analysis** — trust scoring for components, SHA pin
+  verification, and advisory database checks against known-compromised
+  dependencies
+- **Cross-step data flow** — taint propagation through `GITHUB_OUTPUT`,
+  matrix injection, and composite action output laundering
+- **Forge-wide search** — scan an entire GitHub org or GitLab group for
+  vulnerable CI/CD patterns with `actionsieve search`
+- **PR-aware scanning** — diff-aware mode filters and elevates findings
+  based on what changed, with auto-detection in CI environments
+- **Multiple output formats** — JSON, YAML, SARIF, Markdown, OCSF, and
+  CycloneDX SBOM
+- **10 CI/CD platforms** — GitHub Actions, GitLab CI, Azure Pipelines,
+  Jenkins, CircleCI, Bitbucket, Buildkite, Drone, CodeBuild, Cloud Build
+
+## What it detects
 
 - **Expression injection** — untrusted PR/issue data interpolated into
   shell commands via `${{ }}`, `$CI_*`, or platform equivalents
@@ -59,11 +81,31 @@ pre-commit install
 
 Requires Python 3.12+.
 
+## Quick start
+
+```bash
+# Scan a repository for security issues
+actionsieve scan --patterns patterns/ .
+
+# Output as SARIF for GitHub Code Scanning
+actionsieve scan --patterns patterns/ --format sarif --output results.sarif .
+
+# Generate an Actions Bill of Materials (ABOM)
+actionsieve inventory .
+
+# ABOM with trust scores and advisory checks
+actionsieve inventory --online --check .
+
+# Export ABOM as CycloneDX SBOM
+actionsieve inventory --format cyclonedx .
+```
+
 ## Patterns
 
-ActionSieve requires a pattern catalog — YAML files that define what to
-detect. Patterns are maintained separately from the scanner so teams can
-use community patterns, private patterns, or both.
+Security scanning requires a pattern catalog — YAML files that define
+what to detect. Patterns are maintained separately from the scanner so
+teams can use community patterns, private patterns, or both. The
+`inventory` command works without patterns.
 
 Community patterns: [ActionSieve-corpus](https://github.com/OpenSecBench/ActionSieve-corpus)
 
@@ -74,22 +116,9 @@ actionsieve scan --patterns path/to/patterns .
 # Or set the environment variable
 export ACTIONSIEVE_PATTERNS=path/to/patterns
 actionsieve scan .
-```
 
-## Quick start
-
-```bash
-# Scan a repository
-actionsieve scan --patterns patterns/ .
-
-# Output as SARIF for GitHub Code Scanning
-actionsieve scan --patterns patterns/ --format sarif --output results.sarif .
-
-# Generate a component inventory (bill of materials)
-actionsieve inventory .
-
-# Check components against the advisory database
-actionsieve inventory --check .
+# Inspect a pattern's full description, attack scenario, and mitigations
+actionsieve explain --patterns patterns/ expr-injection-run
 ```
 
 ## Scanning modes
@@ -153,7 +182,7 @@ scanner, not how findings are filtered.
 | SARIF | `--format sarif` | GitHub/Azure Code Scanning integration |
 | Markdown | `--format markdown` | Reports, PR comments |
 | OCSF | `--format ocsf` | GRC platform integration (Detection Finding 2004) |
-| CycloneDX | inventory only | SBOM for dependency tracking |
+| CycloneDX | `--format cyclonedx` | ABOM/SBOM export (inventory command) |
 
 ## Environment profiles
 
@@ -175,6 +204,31 @@ actionsieve profile resolve --profile hosted-public
 ```
 
 Profiles can suppress categories, elevate patterns, and extend presets.
+
+## Actions Bill of Materials (ABOM)
+
+Generate a complete inventory of every external CI/CD component —
+actions, orbs, pipes, plugins — across all pipelines in a repository.
+No patterns required.
+
+```bash
+# Basic inventory
+actionsieve inventory .
+
+# With trust scores and SHA pin verification
+actionsieve inventory --online .
+
+# Check components against the advisory database
+actionsieve inventory --online --check .
+
+# Export as CycloneDX SBOM
+actionsieve inventory --format cyclonedx --output sbom.json .
+```
+
+Each component includes its ref type (SHA, tag, branch), pin status,
+first-party classification, and locations where it's used. Online mode
+adds trust scores and verifies that pinned SHAs match their claimed
+repositories.
 
 ## Online checks
 
@@ -210,16 +264,6 @@ actionsieve search my-group --patterns patterns/ --forge gitlab --token $GITLAB_
   [action repo](https://github.com/OpenSecBench/ActionSieve-action/tree/main/examples)
 
 PR mode auto-activates in CI — no configuration needed.
-
-## Pattern details
-
-Inspect any pattern's full description, attack scenario, mitigations,
-and references:
-
-```bash
-actionsieve explain --patterns patterns/ expr-injection-run
-actionsieve explain --patterns patterns/ mutable-action-ref
-```
 
 ## Corpus testing
 
