@@ -1,4 +1,4 @@
-# actionsieve
+# ActionSieve
 
 Multi-platform CI/CD pipeline security scanner. Finds injection
 vulnerabilities, supply chain risks, and misconfigurations across 10
@@ -21,8 +21,6 @@ CI/CD platforms using a pattern-driven detection engine.
 - **Cache poisoning** — cache writes reachable from fork PRs
 - **Hardening gaps** — missing `permissions:` blocks, checkout with
   persisted credentials, unpinned container images
-
-45+ detection patterns, validated against a JSON Schema.
 
 ## Supported platforms
 
@@ -51,35 +49,44 @@ pip install actionsieve
 Or for development:
 
 ```
-uv venv
-uv pip install -e ".[dev]"
+git clone https://github.com/OpenSecBench/ActionSieve.git
+cd ActionSieve
+uv sync --dev
+pre-commit install
 ```
 
 Requires Python 3.12+.
 
-## Quick start
+## Patterns
 
-Scan a repository for CI/CD security issues:
+ActionSieve requires a pattern catalog — YAML files that define what to
+detect. Patterns are maintained separately from the scanner so teams can
+use community patterns, private patterns, or both.
+
+Community patterns: [ActionSieve-corpus](https://github.com/OpenSecBench/ActionSieve-corpus)
 
 ```bash
+# Point to your patterns directory
+actionsieve scan --patterns path/to/patterns .
+
+# Or set the environment variable
+export ACTIONSIEVE_PATTERNS=path/to/patterns
 actionsieve scan .
 ```
 
-Output as SARIF for GitHub Code Scanning:
+## Quick start
 
 ```bash
-actionsieve scan --format sarif --output results.sarif .
-```
+# Scan a repository
+actionsieve scan --patterns patterns/ .
 
-Generate a component inventory (bill of materials):
+# Output as SARIF for GitHub Code Scanning
+actionsieve scan --patterns patterns/ --format sarif --output results.sarif .
 
-```bash
+# Generate a component inventory (bill of materials)
 actionsieve inventory .
-```
 
-Check components against the advisory database:
-
-```bash
+# Check components against the advisory database
 actionsieve inventory --check .
 ```
 
@@ -91,7 +98,7 @@ Scans all pipeline files at a point in time. Every pattern fires based on
 what's in the definitions. This is the default when running locally.
 
 ```bash
-actionsieve scan .
+actionsieve scan --patterns patterns/ .
 ```
 
 ### PR mode (diff-aware)
@@ -102,25 +109,23 @@ environments where trigger and base ref can be detected.
 
 ```bash
 # Explicit changed files
-actionsieve scan --changed-files "Dockerfile,src/app.py" .
+actionsieve scan --patterns patterns/ --changed-files "Dockerfile,src/app.py" .
 
 # From git diff output
-git diff --name-only origin/main | actionsieve scan --changed-files - .
+git diff --name-only origin/main | actionsieve scan --patterns patterns/ --changed-files - .
 
 # Context file (for scripted/corpus use)
-actionsieve scan --context context.yaml .
+actionsieve scan --patterns patterns/ --context context.yaml .
 
 # Force mode
-actionsieve scan --mode pr --changed-files "Dockerfile" .
-actionsieve scan --mode static .    # disable auto-detection in CI
+actionsieve scan --patterns patterns/ --mode pr --changed-files "Dockerfile" .
+actionsieve scan --patterns patterns/ --mode static .    # disable auto-detection in CI
 ```
 
 In PR mode, patterns declare how they interact with the changeset:
 
 - **Suppress** — finding hidden when no relevant file is in the changeset
-  (e.g. `docker-in-docker` suppressed when no Dockerfile changed)
 - **Elevate** — severity bumped when a relevant file IS in the changeset
-  (e.g. expression injection elevated when workflow file is modified)
 - **Always** — fires identically regardless of changeset (default)
 
 CI auto-detection works for GitHub Actions, GitLab CI, Azure Pipelines,
@@ -131,8 +136,7 @@ Jenkins, CircleCI, Bitbucket Pipelines, Buildkite, and Drone.
 Scan only pipeline files changed since a git ref:
 
 ```bash
-actionsieve scan --changed-since main .
-actionsieve scan --changed-since abc123 .
+actionsieve scan --patterns patterns/ --changed-since main .
 ```
 
 This is orthogonal to PR mode — it controls which pipeline files enter the
@@ -157,13 +161,12 @@ on a private repo with ephemeral runners.
 
 ```bash
 # Built-in presets
-actionsieve scan --profile hosted-public .
-actionsieve scan --profile hosted-private .
-actionsieve scan --profile self-hosted .
-actionsieve scan --profile hardened .
+actionsieve scan --patterns patterns/ --profile hosted-public .
+actionsieve scan --patterns patterns/ --profile self-hosted .
+actionsieve scan --patterns patterns/ --profile hardened .
 
 # Custom profile file
-actionsieve scan --profile my-profile.yml .
+actionsieve scan --patterns patterns/ --profile my-profile.yml .
 
 # See effective profile after resolution
 actionsieve profile resolve --profile hosted-public
@@ -176,7 +179,7 @@ Profiles can suppress categories, elevate patterns, and extend presets.
 Verify that SHA-pinned actions actually point to the claimed repository:
 
 ```bash
-actionsieve scan --online .
+actionsieve scan --patterns patterns/ --online .
 actionsieve inventory --online --check .
 ```
 
@@ -188,25 +191,23 @@ Search an organization's repositories for vulnerable CI/CD patterns:
 
 ```bash
 # Scan all repos in an org
-actionsieve search my-org --forge github
+actionsieve search my-org --patterns patterns/ --forge github
 
 # Targeted pattern search
-actionsieve search --pattern expr-injection-run --forge github
+actionsieve search --pattern expr-injection-run --patterns patterns/ --forge github
 
 # GitLab group
-actionsieve search my-group --forge gitlab --token $GITLAB_TOKEN
+actionsieve search my-group --patterns patterns/ --forge gitlab --token $GITLAB_TOKEN
 ```
 
 ## CI integration
 
-Ready-made templates for running actionsieve in CI:
+- **GitHub Actions** — [ActionSieve-action](https://github.com/OpenSecBench/ActionSieve-action)
+  (composite action with SARIF upload to Code Scanning)
+- **GitLab CI / Azure Pipelines** — template examples in the
+  [action repo](https://github.com/OpenSecBench/ActionSieve-action/tree/main/examples)
 
-- **GitHub Actions** — `ci/github/action.yml` (composite action with
-  SARIF upload to Code Scanning)
-- **GitLab CI** — `ci/gitlab/.gitlab-ci-template.yml` (include template)
-- **Azure Pipelines** — `ci/azure/actionsieve.yml` (step template)
-
-PR mode auto-activates in all three — no configuration needed.
+PR mode auto-activates in CI — no configuration needed.
 
 ## Pattern details
 
@@ -214,9 +215,20 @@ Inspect any pattern's full description, attack scenario, mitigations,
 and references:
 
 ```bash
-actionsieve explain expr-injection-run
-actionsieve explain mutable-action-ref
-actionsieve explain docker-in-docker
+actionsieve explain --patterns patterns/ expr-injection-run
+actionsieve explain --patterns patterns/ mutable-action-ref
+```
+
+## Corpus testing
+
+Run detection patterns against a test corpus to validate accuracy:
+
+```bash
+# Run all corpus cases
+actionsieve corpus run corpus/ --verbose
+
+# Generate a coverage report
+actionsieve corpus table corpus/
 ```
 
 ## Exit codes
@@ -226,6 +238,10 @@ actionsieve explain docker-in-docker
 | 0 | No findings (or all suppressed) |
 | 1 | Findings at medium severity or above (or above `--fail-on` threshold) |
 | 2 | Critical findings |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
 ## License
 
