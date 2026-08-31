@@ -2,20 +2,11 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in ActionSieve, please report it
-responsibly. **Do not open a public issue.**
+If you discover a security vulnerability in ActionSieve, please report it via
+[GitHub's private vulnerability reporting](https://github.com/OpenSecBench/ActionSieve/security/advisories/new).
+**Do not open a public issue.**
 
-Email: james@gnuinter.net
-
-Include:
-
-- Description of the vulnerability
-- Steps to reproduce
-- Affected versions
-- Any suggested fix
-
-You should receive an acknowledgment within 48 hours. We will work with you
-to understand and address the issue before any public disclosure.
+You should receive an acknowledgment within 48 hours.
 
 ## Scope
 
