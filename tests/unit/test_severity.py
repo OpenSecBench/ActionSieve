@@ -1,5 +1,5 @@
 from actionsieve.engine import Finding
-from actionsieve.model import Job, Trigger, WorkflowModel, make_runner
+from actionsieve.model import Job, Permissions, Trigger, WorkflowModel, make_runner
 from actionsieve.severity import apply_profile, compute_static, is_elevated, is_suppressed
 
 
@@ -28,12 +28,14 @@ def _finding(
 def _model(
     triggers: list[Trigger] | None = None,
     jobs: list[Job] | None = None,
+    permissions: Permissions | None = None,
 ) -> WorkflowModel:
     return WorkflowModel(
         platform="github",
         file_path="test.yml",
         raw={},
         triggers=triggers or [],
+        permissions=permissions,
         jobs=jobs or [Job(id="build", runner=make_runner("ubuntu-latest"))],
     )
 
@@ -121,6 +123,74 @@ class TestComputeStatic:
             ],
         )
         assert compute_static(f, m) == "info"
+
+    def test_credentials_tag_read_only_permissions_downgrades(self) -> None:
+        f = _finding(
+            severity_base="medium",
+            tags=["credentials", "hardening"],
+            attacker_model="contributor",
+        )
+        m = _model(
+            triggers=[Trigger(event="push", raw_event="push", is_privileged=True)],
+            permissions=Permissions(contents="read", raw={"contents": "read"}),
+        )
+        assert compute_static(f, m) == "low"
+
+    def test_credentials_tag_write_permissions_no_downgrade(self) -> None:
+        f = _finding(
+            severity_base="medium",
+            tags=["credentials", "hardening"],
+            attacker_model="contributor",
+        )
+        m = _model(
+            triggers=[Trigger(event="push", raw_event="push", is_privileged=True)],
+            permissions=Permissions(
+                contents="write", raw={"contents": "write", "id-token": "write"}
+            ),
+        )
+        assert compute_static(f, m) == "medium"
+
+    def test_credentials_tag_no_permissions_block_no_downgrade(self) -> None:
+        f = _finding(
+            severity_base="medium",
+            tags=["credentials", "hardening"],
+            attacker_model="contributor",
+        )
+        m = _model(
+            triggers=[Trigger(event="push", raw_event="push", is_privileged=True)],
+        )
+        assert compute_static(f, m) == "medium"
+
+    def test_credentials_job_permissions_override_workflow(self) -> None:
+        f = _finding(
+            severity_base="medium",
+            tags=["credentials", "hardening"],
+            attacker_model="contributor",
+        )
+        m = _model(
+            triggers=[Trigger(event="push", raw_event="push", is_privileged=True)],
+            permissions=Permissions(contents="write", raw={"contents": "write"}),
+            jobs=[
+                Job(
+                    id="build",
+                    runner=make_runner("ubuntu-latest"),
+                    permissions=Permissions(contents="read", raw={"contents": "read"}),
+                )
+            ],
+        )
+        assert compute_static(f, m) == "low"
+
+    def test_non_credentials_tag_unaffected_by_permissions(self) -> None:
+        f = _finding(
+            severity_base="medium",
+            tags=["injection"],
+            attacker_model="contributor",
+        )
+        m = _model(
+            triggers=[Trigger(event="push", raw_event="push", is_privileged=True)],
+            permissions=Permissions(contents="read", raw={"contents": "read"}),
+        )
+        assert compute_static(f, m) == "medium"
 
 
 class TestApplyProfile:

@@ -35,6 +35,9 @@ def compute_static(finding: Finding, model: WorkflowModel) -> str:
     if attacker_needs_fork and not has_fork_trigger:
         modifier -= 2
 
+    if "credentials" in finding.tags and _permissions_read_only(model, finding.job_id):
+        modifier -= 1
+
     return _clamp(base + modifier)
 
 
@@ -99,6 +102,22 @@ def _severity_category_adjustment(category: str, profile: dict[str, Any]) -> int
     if isinstance(suppress, list) and category in suppress:
         return 2
     return 1
+
+
+_WRITE_SCOPES = frozenset({"write", "admin"})
+
+
+def _permissions_read_only(model: WorkflowModel, job_id: str) -> bool:
+    job = next((j for j in model.jobs if j.id == job_id), None)
+    perms = (job.permissions if job and job.permissions else None) or model.permissions
+    if perms is None:
+        return False
+    raw = perms.raw
+    if not raw:
+        return False
+    if raw.get("_all") in _WRITE_SCOPES:
+        return False
+    return all(v not in _WRITE_SCOPES for v in raw.values())
 
 
 def _clamp(level: int) -> str:
