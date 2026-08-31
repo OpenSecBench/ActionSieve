@@ -7,7 +7,7 @@ normalized CI/CD pipeline models. Patterns are data, maintained separately
 in a corpus repo.
 
 - **Scanner code** → this repo
-- **Detection patterns** → [actionsieve-corpus](https://github.com/OpenSecBench/actionsieve-corpus)
+- **Detection patterns** → [actionsieve-corpus](https://github.com/OpenSecBench/ActionSieve-corpus)
 
 If you want to add a new detection rule, contribute it to the corpus repo.
 If you want to improve how the scanner works, you're in the right place.
