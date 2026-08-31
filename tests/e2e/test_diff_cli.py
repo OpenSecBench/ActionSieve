@@ -64,7 +64,7 @@ def _init_repo(tmp_path: Path) -> Path:
 
 
 class TestChangedSince:
-    def test_only_scans_changed_files(self, tmp_path: Path) -> None:
+    def test_only_scans_changed_files(self, tmp_path: Path, clean_ci_env: None) -> None:
         repo = _init_repo(tmp_path)
         wf_dir = repo / ".github" / "workflows"
 
@@ -80,7 +80,7 @@ class TestChangedSince:
         assert any("vuln.yml" in f for f in files)
         assert not any("safe.yml" in f for f in files)
 
-    def test_no_changes_returns_clean(self, tmp_path: Path) -> None:
+    def test_no_changes_returns_clean(self, tmp_path: Path, clean_ci_env: None) -> None:
         repo = _init_repo(tmp_path)
 
         runner = CliRunner()
@@ -90,7 +90,7 @@ class TestChangedSince:
         data = json.loads(result.output)
         assert data["findings"] == []
 
-    def test_modified_file_scanned(self, tmp_path: Path) -> None:
+    def test_modified_file_scanned(self, tmp_path: Path, clean_ci_env: None) -> None:
         repo = _init_repo(tmp_path)
         wf_dir = repo / ".github" / "workflows"
 
@@ -104,7 +104,7 @@ class TestChangedSince:
         data = json.loads(result.output)
         assert len(data["findings"]) > 0
 
-    def test_not_a_repo_errors(self, tmp_path: Path) -> None:
+    def test_not_a_repo_errors(self, tmp_path: Path, clean_ci_env: None) -> None:
         repo = tmp_path / "no-git"
         wf_dir = repo / ".github" / "workflows"
         wf_dir.mkdir(parents=True)
@@ -116,7 +116,7 @@ class TestChangedSince:
         assert result.exit_code != 0
         assert "git diff failed" in result.output
 
-    def test_bad_ref_errors(self, tmp_path: Path) -> None:
+    def test_bad_ref_errors(self, tmp_path: Path, clean_ci_env: None) -> None:
         repo = _init_repo(tmp_path)
 
         runner = CliRunner()

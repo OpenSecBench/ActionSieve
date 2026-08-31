@@ -33,7 +33,7 @@ def _make_repo(tmp_path: Path) -> Path:
 
 
 class TestPRModeFlags:
-    def test_changed_files_flag(self, tmp_path: Path) -> None:
+    def test_changed_files_flag(self, tmp_path: Path, clean_ci_env: None) -> None:
         repo = _make_repo(tmp_path)
         runner = CliRunner()
         result = runner.invoke(
@@ -44,7 +44,7 @@ class TestPRModeFlags:
         data = json.loads(result.output)
         assert "findings" in data
 
-    def test_trigger_and_actor_flags(self, tmp_path: Path) -> None:
+    def test_trigger_and_actor_flags(self, tmp_path: Path, clean_ci_env: None) -> None:
         repo = _make_repo(tmp_path)
         runner = CliRunner()
         result = runner.invoke(
@@ -64,7 +64,7 @@ class TestPRModeFlags:
         data = json.loads(result.output)
         assert "findings" in data
 
-    def test_context_file(self, tmp_path: Path) -> None:
+    def test_context_file(self, tmp_path: Path, clean_ci_env: None) -> None:
         repo = _make_repo(tmp_path)
         ctx = tmp_path / "context.yaml"
         ctx.write_text("trigger: pull_request\nactor: fork\nchanged_files:\n  - Dockerfile\n")
@@ -77,7 +77,7 @@ class TestPRModeFlags:
         data = json.loads(result.output)
         assert "findings" in data
 
-    def test_mode_static_ignores_context(self, tmp_path: Path) -> None:
+    def test_mode_static_ignores_context(self, tmp_path: Path, clean_ci_env: None) -> None:
         repo = _make_repo(tmp_path)
         runner = CliRunner()
         result = runner.invoke(
@@ -95,7 +95,7 @@ class TestPRModeFlags:
         data = json.loads(result.output)
         assert len(data["findings"]) > 0
 
-    def test_mode_pr_without_context_errors(self, tmp_path: Path) -> None:
+    def test_mode_pr_without_context_errors(self, tmp_path: Path, clean_ci_env: None) -> None:
         repo = _make_repo(tmp_path)
         runner = CliRunner()
         result = runner.invoke(
@@ -105,7 +105,7 @@ class TestPRModeFlags:
         assert result.exit_code != 0
         assert "--mode pr requires" in result.output
 
-    def test_changed_since_warning_in_pr_mode(self, tmp_path: Path) -> None:
+    def test_changed_since_warning_in_pr_mode(self, tmp_path: Path, clean_ci_env: None) -> None:
         repo = _make_repo(tmp_path)
         runner = CliRunner()
         result = runner.invoke(
@@ -121,7 +121,7 @@ class TestPRModeFlags:
         )
         assert "ignored in PR mode" in (result.output + (result.stderr or ""))
 
-    def test_changed_files_from_file(self, tmp_path: Path) -> None:
+    def test_changed_files_from_file(self, tmp_path: Path, clean_ci_env: None) -> None:
         repo = _make_repo(tmp_path)
         files = tmp_path / "changed.txt"
         files.write_text("Dockerfile\nsrc/app.py\n")
