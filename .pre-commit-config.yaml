@@ -21,3 +21,10 @@ repos:
         language: system
         pass_filenames: false
         types: [python]
+
+      - id: uv-lock-check
+        name: uv lock check
+        entry: uv lock --check
+        language: system
+        pass_filenames: false
+        files: ^pyproject\.toml$
