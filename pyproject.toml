@@ -1,6 +1,6 @@
 [project]
 name = "actionsieve"
-version = "0.1.0"
+version = "0.1.1"
 description = "Multi-platform CI/CD pipeline security scanner"
 readme = "README.md"
 license = "MIT"
