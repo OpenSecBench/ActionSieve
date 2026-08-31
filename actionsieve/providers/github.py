@@ -63,13 +63,13 @@ class GitHubProvider:
             return []
         files: list[Path] = []
         for pattern in ("*.yml", "*.yaml"):
-            files.extend(sorted(workflows_dir.glob(pattern)))
+            files.extend(p for p in sorted(workflows_dir.glob(pattern)) if not p.is_symlink())
         return files
 
     def find_action_files(self, repo_path: Path) -> list[Path]:
         files: list[Path] = []
         for name in ("action.yml", "action.yaml"):
-            files.extend(sorted(repo_path.rglob(name)))
+            files.extend(p for p in sorted(repo_path.rglob(name)) if not p.is_symlink())
         return files
 
     def parse(self, file_path: Path) -> WorkflowModel:

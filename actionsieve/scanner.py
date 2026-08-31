@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import fnmatch
+import os.path
 import re
 import subprocess
 from dataclasses import dataclass, field
@@ -292,12 +293,16 @@ def _resolve_composite_actions(
 
 def _local_action_path(ref: ComponentRef) -> str | None:
     if ref.raw.startswith("./"):
-        return ref.raw.removeprefix("./")
-    if ref.raw.startswith(".\\"):
-        return ref.raw.removeprefix(".\\")
-    if ref.owner == ".":
-        return ref.name
-    return None
+        local = ref.raw.removeprefix("./")
+    elif ref.raw.startswith(".\\"):
+        local = ref.raw.removeprefix(".\\")
+    elif ref.owner == ".":
+        local = ref.name
+    else:
+        return None
+    if os.path.normpath(local).startswith(".."):
+        return None
+    return local
 
 
 def _parse_composite_action(
@@ -305,6 +310,8 @@ def _parse_composite_action(
 ) -> tuple[list[Step], dict[str, str]]:
     for filename in ("action.yml", "action.yaml"):
         candidate = repo_path / action_path / filename
+        if not candidate.resolve().is_relative_to(repo_path.resolve()):
+            continue
         if candidate.is_file():
             return _read_composite_steps(candidate, action_path)
     return [], {}
