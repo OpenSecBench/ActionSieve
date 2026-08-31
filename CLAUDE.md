@@ -34,8 +34,7 @@ Dev:
 ## Development setup
 
 ```
-uv venv
-uv pip install -e ".[dev]"
+uv sync --dev
 pre-commit install
 ```
 

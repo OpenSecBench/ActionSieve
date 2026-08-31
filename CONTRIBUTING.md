@@ -15,8 +15,7 @@ If you want to improve how the scanner works, you're in the right place.
 ## Setup
 
 ```
-uv venv
-uv pip install -e ".[dev]"
+uv sync --dev
 pre-commit install
 ```
 
