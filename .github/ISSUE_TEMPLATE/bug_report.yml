@@ -1,0 +1,51 @@
+name: Bug Report
+description: Report a bug in ActionSieve
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened vs. what you expected.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps or a sample pipeline file.
+      render: yaml
+
+  - type: input
+    id: version
+    attributes:
+      label: ActionSieve version
+      description: Output of `actionsieve --version`.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: CI platform
+      options:
+        - GitHub Actions
+        - GitLab CI
+        - Azure Pipelines
+        - Jenkins
+        - CircleCI
+        - Bitbucket Pipelines
+        - Buildkite
+        - Drone
+        - CodeBuild
+        - Cloud Build
+        - N/A
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: OS, Python version, relevant flags, etc.
