@@ -1,5 +1,7 @@
 # ActionSieve
 
+> **Note:** ActionSieve is under active development and testing. APIs, output formats, and detection behavior are subject to change.
+
 Multi-platform CI/CD pipeline security scanner. Finds injection
 vulnerabilities, supply chain risks, and misconfigurations across 10
 CI/CD platforms using a pattern-driven detection engine.
