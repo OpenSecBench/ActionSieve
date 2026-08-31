@@ -105,7 +105,7 @@ def render_sarif(findings: list[Finding], *, notes: list[str] | None = None) -> 
         "tool": {
             "driver": {
                 "name": "actionsieve",
-                "informationUri": "https://github.com/OpenSecBench/actionsieve",
+                "informationUri": "https://github.com/OpenSecBench/ActionSieve",
                 "rules": rules,
             },
         },

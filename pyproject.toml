@@ -45,8 +45,10 @@ dev = [
 actionsieve = "actionsieve.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/OpenSecBench/actionsieve"
-Repository = "https://github.com/OpenSecBench/actionsieve"
+Homepage = "https://github.com/OpenSecBench/ActionSieve"
+Repository = "https://github.com/OpenSecBench/ActionSieve"
+Issues = "https://github.com/OpenSecBench/ActionSieve/issues"
+Changelog = "https://github.com/OpenSecBench/ActionSieve/releases"
 
 [build-system]
 requires = ["hatchling"]
