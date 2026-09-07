@@ -286,6 +286,10 @@ Full spec + design decisions: `../actionsieve-corpus/bugs/diff-aware-scanning.md
 - [x] Validate all patterns still load and pass schema
 - [x] Test annotated patterns against existing fixtures (no regressions)
 
+## Backlog — future platforms
+
+- [ ] Taskcluster (Mozilla) — `.taskcluster.yml` with JSON-e templating. Real security surface (trust level misconfiguration, `${event.*}` injection into shell commands, scope over-granting, unpinned decision images, permissive PR policy). Very niche adoption (essentially Mozilla-only). Medium implementation effort comparable to Buildkite/Drone. Main complexity: JSON-e partial evaluation to trace interpolation flow. Low priority unless Mozilla becomes a target user.
+
 ## Ongoing
 
 - [ ] Keep pattern catalog updated as new attack patterns are discovered
