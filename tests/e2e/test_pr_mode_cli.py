@@ -119,7 +119,7 @@ class TestPRModeFlags:
                 str(repo),
             ],
         )
-        assert "ignored in PR mode" in (result.output + (result.stderr or ""))
+        assert "ignored in PR mode" in result.output
 
     def test_changed_files_from_file(self, tmp_path: Path, clean_ci_env: None) -> None:
         repo = _make_repo(tmp_path)
